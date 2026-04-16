@@ -6,7 +6,7 @@ description: >
   whenever the user wants to create a new Node.js app, set up a TypeScript
   service, bootstrap an API, start a microservice, or initialize a backend
   project — even if they don't say "scaffold" explicitly.
-argument-hint: "[project-name] [--http] [--metrics] [--db]"
+argument-hint: "[project-name] [--http] [--metrics] [--db] [--docker]"
 metadata:
   author: Pier Luigi Fiorini
   license: MIT
@@ -38,6 +38,13 @@ inputs:
       - "yes"
       - "no"
     default: "no"
+  - id: withDocker
+    description: "Add a production-ready Dockerfile for Node 24?"
+    type: pickString
+    options:
+      - "yes"
+      - "no"
+    default: "no"
 ---
 
 # Scaffold a Node.js + TypeScript Project
@@ -52,10 +59,12 @@ Use the values collected from the UI inputs above:
 | `${input:withHttp}` | pick | `"yes"` → generate server files |
 | `${input:withMetrics}` | pick | `"yes"` → generate metrics files |
 | `${input:withDb}` | pick | `"yes"` → generate database files |
+| `${input:withDocker}` | pick | `"yes"` → generate `Dockerfile` and `.dockerignore` |
 
 If the user's message already contains all parameters (e.g. *"scaffold payments-api with http and metrics"*), infer the values and skip the UI inputs that were already answered.
 
 **Constraint:** if `${input:withMetrics}` is `"yes"` and `${input:withHttp}` is `"no"`, treat `withHttp` as `"yes"` and inform the user.
+
 
 ---
 
@@ -73,6 +82,8 @@ Output every file listed below in full — no placeholders, no `// ...`, no trun
 ├── config.yaml.example
 ├── .env.example
 ├── .gitignore
+├── Dockerfile                                    (withDocker)
+├── .dockerignore                                 (withDocker)
 ├── .vscode/
 │   └── settings.json
 └── src/
@@ -261,6 +272,23 @@ Read `references/endpoints.md` for the full specifications of the layered archit
 
 ---
 
+### `Dockerfile` *(withDocker)*
+
+Copy verbatim from `assets/Dockerfile`.
+
+The image uses a two-stage Alpine build: stage `deps` installs production-only
+dependencies, stage `runtime` copies in only `node_modules`, `src/`, and `package.json`
+and runs as a non-root user. Because Node 24 runs TypeScript directly via
+`--experimental-strip-types` there is no compiled output — `src/` is the application.
+
+---
+
+### `.dockerignore` *(withDocker)*
+
+Copy verbatim from `assets/.dockerignore`.
+
+---
+
 ## Step 4 — Post-generation message
 
 ```
@@ -282,6 +310,10 @@ Useful scripts:
   npm test                             Run tests with Node 24 type-stripping
   npm run check                        Biome lint + format
   npm run typecheck                    Type-check without running
+
+Docker:                                # (withDocker only)
+  docker build -t <projectName> .
+  docker run --rm --env-file .env -p 3000:3000 <projectName>
 ```
 
 ---
@@ -296,3 +328,6 @@ Useful scripts:
 
 > "New project **api** with everything."
 → `projectName=api`, `withHttp=yes`, `withMetrics=yes`, `withDb=yes`
+
+> "Scaffold **gateway** with HTTP and Docker, no database."
+→ `projectName=gateway`, `withHttp=yes`, `withMetrics=no`, `withDb=no`, `withDocker=yes`
