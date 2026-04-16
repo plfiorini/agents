@@ -6,7 +6,7 @@ description: >
   whenever the user wants to create a new Node.js app, set up a TypeScript
   service, bootstrap an API, start a microservice, or initialize a backend
   project — even if they don't say "scaffold" explicitly.
-argument-hint: "[project-name] [--http] [--metrics] [--db] [--docker] [--openapi]"
+argument-hint: "[project-name] [--http] [--metrics] [--db] [--migrations] [--docker] [--openapi]"
 metadata:
   author: Pier Luigi Fiorini
   license: MIT
@@ -33,6 +33,13 @@ inputs:
     default: "no"
   - id: withDb
     description: "Add a Sequelize + Postgres database module?"
+    type: pickString
+    options:
+      - "yes"
+      - "no"
+    default: "no"
+  - id: withMigrations
+    description: "Add Sequelize migrations with Umzug? (requires withDb)"
     type: pickString
     options:
       - "yes"
@@ -66,6 +73,7 @@ Use the values collected from the UI inputs above:
 | `${input:withHttp}` | pick | `"yes"` → generate server files |
 | `${input:withMetrics}` | pick | `"yes"` → generate metrics files |
 | `${input:withDb}` | pick | `"yes"` → generate database files |
+| `${input:withMigrations}` | pick | `"yes"` → generate Umzug migration runner and example migration |
 | `${input:withDocker}` | pick | `"yes"` → generate `Dockerfile` and `.dockerignore` |
 | `${input:withOpenApi}` | pick | `"yes"` → register `@fastify/swagger` + `@fastify/swagger-ui` and annotate routes |
 
@@ -74,6 +82,7 @@ If the user's message already contains all parameters (e.g. *"scaffold payments-
 **Constraints:**
 - If `${input:withMetrics}` is `"yes"` and `${input:withHttp}` is `"no"`, treat `withHttp` as `"yes"` and inform the user.
 - If `${input:withOpenApi}` is `"yes"` and `${input:withHttp}` is `"no"`, treat `withHttp` as `"yes"` and inform the user.
+- If `${input:withMigrations}` is `"yes"` and `${input:withDb}` is `"no"`, treat `withDb` as `"yes"` and inform the user.
 
 
 ---
@@ -94,6 +103,10 @@ Output every file listed below in full — no placeholders, no `// ...`, no trun
 ├── .gitignore
 ├── Dockerfile                                    (withDocker)
 ├── .dockerignore                                 (withDocker)
+├── migrations/                                   (withMigrations)
+│   ├── 20240101000000-create-example.ts
+│   ├── 20240101000001-create-example.up.sql
+│   └── 20240101000001-create-example.down.sql
 ├── .vscode/
 │   └── settings.json
 └── src/
@@ -101,6 +114,7 @@ Output every file listed below in full — no placeholders, no `// ...`, no trun
     ├── config.ts
     ├── logger.ts
     ├── database.ts                               (withDb)
+    ├── migrate.ts                                (withMigrations)
     ├── metrics.ts                                (withMetrics)
     ├── server.ts                                 (withHttp)
     └── endpoints/
@@ -176,16 +190,19 @@ Every generated TypeScript file must pass `biome check` without modifications:
 - `"type": "module"` and `"engines": { "node": ">=24.0.0" }` are mandatory.
 - Scripts:
 
-| Script | Command |
-|---|---|
-| `start` | `node --experimental-strip-types src/index.ts` |
-| `dev` | `node --watch --experimental-strip-types --env-file=.env src/index.ts` |
-| `typecheck` | `tsc --noEmit` |
-| `test` | `node --test --experimental-strip-types "src/**/*.test.ts"` |
-| `lint` | `biome lint ./src` |
-| `format` | `biome format --write ./src` |
-| `check` | `biome check ./src` |
-| `check:fix` | `biome check --write ./src` |
+| Script | Command | Condition |
+|---|---|---|
+| `start` | `node --experimental-strip-types src/index.ts` | always |
+| `dev` | `node --watch --experimental-strip-types --env-file=.env src/index.ts` | always |
+| `typecheck` | `tsc --noEmit` | always |
+| `test` | `node --test --experimental-strip-types "src/**/*.test.ts"` | always |
+| `lint` | `biome lint ./src` | always |
+| `format` | `biome format --write ./src` | always |
+| `check` | `biome check ./src` | always |
+| `check:fix` | `biome check --write ./src` | always |
+| `migrate` | `node --experimental-strip-types src/migrate.ts up` | `withMigrations` |
+| `migrate:down` | `node --experimental-strip-types src/migrate.ts down` | `withMigrations` |
+| `migrate:pending` | `node --experimental-strip-types src/migrate.ts pending` | `withMigrations` |
 
 - Dependencies:
 
@@ -202,6 +219,7 @@ Every generated TypeScript file must pass `biome check` without modifications:
 | `sequelize` | dependency | `withDb` |
 | `pg` | dependency | `withDb` |
 | `pg-hstore` | dependency | `withDb` |
+| `umzug` | dependency | `withMigrations` |
 | `typescript` (`"latest"`) | devDependency | always |
 | `@types/node` (`"latest"`) | devDependency | always |
 | `@biomejs/biome` | devDependency | always |
@@ -280,6 +298,12 @@ Read `references/server.md` for the full specifications of:
 - `src/server.ts` *(withHttp)* — Fastify setup, shutdown hook, route registration
 - `src/index.ts` — entry point; two variants (use asset templates, adapt per enabled options)
 
+When `withMigrations=yes`, also read `references/migrations.md` for:
+
+- `src/migrate.ts` — Umzug-based migration runner supporting `.ts` and `.up.sql` files (copy from `assets/src/migrate.ts`)
+- `migrations/20240101000000-create-example.ts` — starter TypeScript migration (copy from asset)
+- `migrations/20240101000001-create-example.up.sql` + `.down.sql` — starter SQL migration pair (copy from assets)
+
 When `withOpenApi=yes`, also read `references/openapi.md` for:
 
 - Config schema additions (`openapi` nested object)
@@ -329,6 +353,11 @@ Endpoints:                             # (withHttp only)
   GET /metrics                         Prometheus scrape endpoint (withMetrics only)
   GET /documentation                   Swagger UI (withOpenApi only)
 
+Migrations:                            # (withMigrations only)
+  npm run migrate                      Apply all pending migrations
+  npm run migrate:down                 Revert last migration
+  npm run migrate:pending              List unapplied migrations
+
 Useful scripts:
   npm test                             Run tests with Node 24 type-stripping
   npm run check                        Biome lint + format
@@ -357,3 +386,6 @@ Docker:                                # (withDocker only)
 
 > "New **catalog-api** with HTTP, OpenAPI docs, and a database."
 → `projectName=catalog-api`, `withHttp=yes`, `withOpenApi=yes`, `withDb=yes`
+
+> "Scaffold **billing-service** with a database and migrations."
+→ `projectName=billing-service`, `withHttp=no`, `withDb=yes`, `withMigrations=yes`
