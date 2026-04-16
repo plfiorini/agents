@@ -107,7 +107,7 @@ Output every file listed below in full — no placeholders, no `// ...`, no trun
 #### TypeScript
 - Use the **latest stable version** of TypeScript (`"typescript": "latest"`).
 - Enable `strict: true` plus `noUncheckedIndexedAccess` and `noImplicitOverride`.
-- Target `ES2024`, `lib: ["ES2024"]`.
+- Target `ESNext`, `lib: ["ESNext"]`.
 
 #### Type-stripping
 - Use **Node.js 24 native type-stripping** (`--experimental-strip-types`) for all scripts that execute TypeScript source directly (`dev`, `test`).
@@ -188,27 +188,7 @@ Every generated TypeScript file must pass `biome check` without modifications:
 
 ### `tsconfig.json`
 
-```json
-{
-    "compilerOptions": {
-        "target": "ES2024",
-        "module": "NodeNext",
-        "moduleResolution": "NodeNext",
-        "lib": ["ES2024"],
-        "outDir": "dist",
-        "rootDir": "src",
-        "strict": true,
-        "esModuleInterop": true,
-        "skipLibCheck": true,
-        "declaration": true,
-        "sourceMap": true,
-        "noUncheckedIndexedAccess": true,
-        "noImplicitOverride": true
-    },
-    "include": ["src"],
-    "exclude": ["node_modules", "dist"]
-}
-```
+Copy verbatim from `assets/tsconfig.json`.
 
 ---
 
