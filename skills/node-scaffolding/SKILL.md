@@ -6,7 +6,7 @@ description: >
   whenever the user wants to create a new Node.js app, set up a TypeScript
   service, bootstrap an API, start a microservice, or initialize a backend
   project — even if they don't say "scaffold" explicitly.
-argument-hint: "[project-name] [--http] [--metrics] [--db] [--docker]"
+argument-hint: "[project-name] [--http] [--metrics] [--db] [--docker] [--openapi]"
 metadata:
   author: Pier Luigi Fiorini
   license: MIT
@@ -45,6 +45,13 @@ inputs:
       - "yes"
       - "no"
     default: "no"
+  - id: withOpenApi
+    description: "Add @fastify/swagger + @fastify/swagger-ui for OpenAPI docs? (forces HTTP server on)"
+    type: pickString
+    options:
+      - "yes"
+      - "no"
+    default: "no"
 ---
 
 # Scaffold a Node.js + TypeScript Project
@@ -60,10 +67,13 @@ Use the values collected from the UI inputs above:
 | `${input:withMetrics}` | pick | `"yes"` → generate metrics files |
 | `${input:withDb}` | pick | `"yes"` → generate database files |
 | `${input:withDocker}` | pick | `"yes"` → generate `Dockerfile` and `.dockerignore` |
+| `${input:withOpenApi}` | pick | `"yes"` → register `@fastify/swagger` + `@fastify/swagger-ui` and annotate routes |
 
 If the user's message already contains all parameters (e.g. *"scaffold payments-api with http and metrics"*), infer the values and skip the UI inputs that were already answered.
 
-**Constraint:** if `${input:withMetrics}` is `"yes"` and `${input:withHttp}` is `"no"`, treat `withHttp` as `"yes"` and inform the user.
+**Constraints:**
+- If `${input:withMetrics}` is `"yes"` and `${input:withHttp}` is `"no"`, treat `withHttp` as `"yes"` and inform the user.
+- If `${input:withOpenApi}` is `"yes"` and `${input:withHttp}` is `"no"`, treat `withHttp` as `"yes"` and inform the user.
 
 
 ---
@@ -106,6 +116,9 @@ Output every file listed below in full — no placeholders, no `// ...`, no trun
             ├── metrics.service.ts
             └── metrics.test.ts
 ```
+
+> **OpenAPI (`withOpenApi`):** no extra files are created. The swagger plugins are wired into
+> `src/server.ts` and JSON Schema declarations are added inline to each route handler.
 
 > **Endpoint convention:** every HTTP endpoint lives under `src/endpoints/<endpoint>/` with five files. The `metrics` endpoint has no repository because it does not access a database.
 
@@ -183,6 +196,8 @@ Every generated TypeScript file must pass `biome check` without modifications:
 | `zod-config` | dependency | always |
 | `fastify` | dependency | `withHttp` |
 | `@fastify/sensible` | dependency | `withHttp` |
+| `@fastify/swagger` | dependency | `withOpenApi` |
+| `@fastify/swagger-ui` | dependency | `withOpenApi` |
 | `prom-client` | dependency | `withMetrics` |
 | `sequelize` | dependency | `withDb` |
 | `pg` | dependency | `withDb` |
@@ -217,7 +232,7 @@ Copy verbatim from `assets/vscode-settings.json`.
 
 ### `config.yaml.example`
 
-Copy from `assets/config.yaml.example`. Omit the `port` field when `withHttp=no`.
+Copy from `assets/config.yaml.example`. Omit the `port` field when `withHttp=no`. Omit the `openapi` block when `withOpenApi=no`.
 
 > Committed to source control. Contains non-secret base configuration only. Copy to `config.yaml` and adjust per environment.
 
@@ -245,6 +260,7 @@ Read `assets/src/config.ts` as the starting template, then adapt it to the enabl
 
 - **Omit** the `port` field from the schema when `withHttp=no`.
 - **Omit** the `dbUrl` field and the `DATABASE_URL` rename mapping when `withDb=no`.
+- **Add** the `openapi` nested object to the schema when `withOpenApi=yes` — see `references/openapi.md` for the exact field definitions.
 - Keep all import statements and the `__dirname` path resolution exactly as shown in the asset — they are required for the `yamlAdapter` to locate `config.yaml` reliably regardless of the working directory.
 
 ---
@@ -263,6 +279,12 @@ Read `references/server.md` for the full specifications of:
 - `src/metrics.ts` *(withMetrics)* — prom-client registry, ELU gauge, request histogram
 - `src/server.ts` *(withHttp)* — Fastify setup, shutdown hook, route registration
 - `src/index.ts` — entry point; two variants (use asset templates, adapt per enabled options)
+
+When `withOpenApi=yes`, also read `references/openapi.md` for:
+
+- Config schema additions (`openapi` nested object)
+- `src/server.ts` plugin registration (`@fastify/swagger` + `@fastify/swagger-ui` before routes)
+- JSON Schema annotations required on each route
 
 ---
 
@@ -305,6 +327,7 @@ Endpoints:                             # (withHttp only)
   GET /health/live                     Kubernetes liveness probe
   GET /health/ready                    Kubernetes readiness probe
   GET /metrics                         Prometheus scrape endpoint (withMetrics only)
+  GET /documentation                   Swagger UI (withOpenApi only)
 
 Useful scripts:
   npm test                             Run tests with Node 24 type-stripping
@@ -331,3 +354,6 @@ Docker:                                # (withDocker only)
 
 > "Scaffold **gateway** with HTTP and Docker, no database."
 → `projectName=gateway`, `withHttp=yes`, `withMetrics=no`, `withDb=no`, `withDocker=yes`
+
+> "New **catalog-api** with HTTP, OpenAPI docs, and a database."
+→ `projectName=catalog-api`, `withHttp=yes`, `withOpenApi=yes`, `withDb=yes`

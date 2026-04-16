@@ -5,3 +5,8 @@ env: development
 logLevel: debug
 # port is only needed when the HTTP server is enabled (withHttp=yes).
 port: 3000
+# openapi block is only needed when withOpenApi=yes.
+openapi:
+  title: My API
+  version: 1.0.0
+  description: ""
