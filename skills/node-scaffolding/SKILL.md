@@ -110,15 +110,16 @@ Output every file listed below in full — no placeholders, no `// ...`, no trun
 - Target `ESNext`, `lib: ["ESNext"]`.
 
 #### Type-stripping
-- Use **Node.js 24 native type-stripping** (`--experimental-strip-types`) for all scripts that execute TypeScript source directly (`dev`, `test`).
-- Do **not** use `ts-node` or `tsx`. TypeScript is compiled to JavaScript only by the production `build` script via `tsc`.
+- Use **Node.js 24 native type-stripping** (`--experimental-strip-types`) for all scripts (`start`, `dev`, `test`).
+- Do **not** use `ts-node` or `tsx`. Node 24 runs TypeScript source directly — there is no compilation step.
 
 #### Module system
 - `"type": "module"` in `package.json` — ES Modules are mandatory.
 - Use `import`/`export` exclusively. Never `require`, `module.exports`, `__dirname`, or `__filename`.
 - Use `import.meta.url` with `path.dirname` wherever a file-relative path is needed.
-- **All local imports must use the `.js` extension** — required by the `NodeNext` resolver.
+- **All local imports must use the `.ts` extension** — Node 24 runs TypeScript directly; there is no compiled `.js` to point at.
 - `"module": "NodeNext"` and `"moduleResolution": "NodeNext"` in `tsconfig.json`.
+- `"allowImportingTsExtensions": true` is required in `tsconfig.json` because imports use `.ts` extensions.
 
 #### Async & I/O
 - `async/await` everywhere — no `.then()/.catch()` chains, no nested callbacks.
@@ -153,8 +154,7 @@ Every generated TypeScript file must pass `biome check` without modifications:
 
 | Script | Command |
 |---|---|
-| `build` | `tsc` |
-| `start` | `node dist/index.js` |
+| `start` | `node --experimental-strip-types src/index.ts` |
 | `dev` | `node --watch --experimental-strip-types --env-file=.env src/index.ts` |
 | `typecheck` | `tsc --noEmit` |
 | `test` | `node --test --experimental-strip-types "src/**/*.test.ts"` |
@@ -281,7 +281,7 @@ Endpoints:                             # (withHttp only)
 Useful scripts:
   npm test                             Run tests with Node 24 type-stripping
   npm run check                        Biome lint + format
-  npm run build                        Compile to dist/ for production
+  npm run typecheck                    Type-check without running
 ```
 
 ---

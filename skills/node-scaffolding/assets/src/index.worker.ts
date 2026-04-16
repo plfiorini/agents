@@ -1,5 +1,5 @@
-import { logger } from "./logger.js";
-import { connectDatabase, closeDatabase } from "./database.js"; // omit when withDb=no
+import { logger } from "./logger.ts";
+import { connectDatabase, closeDatabase } from "./database.ts"; // omit when withDb=no
 
 try {
     await connectDatabase(); // omit when withDb=no

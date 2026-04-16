@@ -1,5 +1,5 @@
-import { logger } from "./logger.js";
-import { startServer } from "./server.js";
+import { logger } from "./logger.ts";
+import { startServer } from "./server.ts";
 
 try {
     await startServer();
