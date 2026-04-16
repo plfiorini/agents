@@ -1,0 +1,7 @@
+# Base configuration — safe to commit, no secrets.
+# Copy to config.yaml and adjust for your environment.
+
+env: development
+logLevel: debug
+# port is only needed when the HTTP server is enabled (withHttp=yes).
+port: 3000

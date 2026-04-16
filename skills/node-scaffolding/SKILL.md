@@ -1,0 +1,318 @@
+---
+name: node-scaffolding
+mode: agent
+description: >
+  Scaffold a production-ready Node.js + TypeScript project. Use this skill
+  whenever the user wants to create a new Node.js app, set up a TypeScript
+  service, bootstrap an API, start a microservice, or initialize a backend
+  project — even if they don't say "scaffold" explicitly.
+argument-hint: "[project-name] [--http] [--metrics] [--db]"
+metadata:
+  author: Pier Luigi Fiorini
+  license: MIT
+  version: "1.0"
+allowed-tools: Bash Read Write
+inputs:
+  - id: projectName
+    description: "Project name — used as the directory name and package.json name"
+    type: promptString
+    default: my-app
+  - id: withHttp
+    description: "Add a Fastify HTTP server with Kubernetes health probes?"
+    type: pickString
+    options:
+      - "yes"
+      - "no"
+    default: "no"
+  - id: withMetrics
+    description: "Expose a Prometheus /metrics endpoint? (forces HTTP server on)"
+    type: pickString
+    options:
+      - "yes"
+      - "no"
+    default: "no"
+  - id: withDb
+    description: "Add a Sequelize + Postgres database module?"
+    type: pickString
+    options:
+      - "yes"
+      - "no"
+    default: "no"
+---
+
+# Scaffold a Node.js + TypeScript Project
+
+## Step 1 — Resolve parameters
+
+Use the values collected from the UI inputs above:
+
+| Variable | Comes from | Meaning |
+|---|---|---|
+| `${input:projectName}` | text input | directory name and `package.json` `name` |
+| `${input:withHttp}` | pick | `"yes"` → generate server files |
+| `${input:withMetrics}` | pick | `"yes"` → generate metrics files |
+| `${input:withDb}` | pick | `"yes"` → generate database files |
+
+If the user's message already contains all parameters (e.g. *"scaffold payments-api with http and metrics"*), infer the values and skip the UI inputs that were already answered.
+
+**Constraint:** if `${input:withMetrics}` is `"yes"` and `${input:withHttp}` is `"no"`, treat `withHttp` as `"yes"` and inform the user.
+
+---
+
+## Step 2 — Generate files
+
+Output every file listed below in full — no placeholders, no `// ...`, no truncation. Generate conditional files only when the relevant input is `"yes"`.
+
+### Project structure
+
+```
+<projectName>/
+├── package.json
+├── tsconfig.json
+├── biome.jsonc
+├── config.yaml.example
+├── .env.example
+├── .gitignore
+├── .vscode/
+│   └── settings.json
+└── src/
+    ├── index.ts
+    ├── config.ts
+    ├── logger.ts
+    ├── database.ts                               (withDb)
+    ├── metrics.ts                                (withMetrics)
+    ├── server.ts                                 (withHttp)
+    └── endpoints/
+        ├── health/                               (withHttp)
+        │   ├── health.route.ts
+        │   ├── health.controller.ts
+        │   ├── health.service.ts
+        │   ├── health.repository.ts
+        │   └── health.test.ts
+        └── metrics/                              (withHttp + withMetrics)
+            ├── metrics.route.ts
+            ├── metrics.controller.ts
+            ├── metrics.service.ts
+            └── metrics.test.ts
+```
+
+> **Endpoint convention:** every HTTP endpoint lives under `src/endpoints/<endpoint>/` with five files. The `metrics` endpoint has no repository because it does not access a database.
+
+---
+
+## Step 3 — File specifications
+
+### Global rules (apply to every generated file)
+
+#### TypeScript
+- Use the **latest stable version** of TypeScript (`"typescript": "latest"`).
+- Enable `strict: true` plus `noUncheckedIndexedAccess` and `noImplicitOverride`.
+- Target `ES2024`, `lib: ["ES2024"]`.
+
+#### Type-stripping
+- Use **Node.js 24 native type-stripping** (`--experimental-strip-types`) for all scripts that execute TypeScript source directly (`dev`, `test`).
+- Do **not** use `ts-node` or `tsx`. TypeScript is compiled to JavaScript only by the production `build` script via `tsc`.
+
+#### Module system
+- `"type": "module"` in `package.json` — ES Modules are mandatory.
+- Use `import`/`export` exclusively. Never `require`, `module.exports`, `__dirname`, or `__filename`.
+- Use `import.meta.url` with `path.dirname` wherever a file-relative path is needed.
+- **All local imports must use the `.js` extension** — required by the `NodeNext` resolver.
+- `"module": "NodeNext"` and `"moduleResolution": "NodeNext"` in `tsconfig.json`.
+
+#### Async & I/O
+- `async/await` everywhere — no `.then()/.catch()` chains, no nested callbacks.
+- No synchronous I/O — `fs/promises` only; never any `*Sync` variant.
+- Wrap every `await` in `try/catch` or let errors propagate to a documented top-level handler.
+- Top-level `await` is allowed in ESM entry points (e.g. `src/index.ts`, `src/config.ts`).
+
+#### Code style — Biome-compliant
+
+Every generated TypeScript file must pass `biome check` without modifications:
+
+| Rule | Value |
+|---|---|
+| Indent | 4 spaces |
+| Line width | 120 characters |
+| Quotes | Double (`"`) |
+| Semicolons | Always |
+| Trailing commas | All (arrays, objects, function parameters) |
+| Arrow parens | Omit for single parameter (`x => x`) |
+| `const` / `let` | `const` by default; `let` only when reassignment is needed; never `var` |
+| Equality | `===` / `!==` only |
+| `eval` | Never — `noGlobalEval` is `error` in the Biome config |
+| Paths | `path.join()` / `path.resolve()` only; never string concatenation |
+| Secrets | Environment variables only; never hardcoded |
+
+---
+
+### `package.json`
+
+- `"type": "module"` and `"engines": { "node": ">=24.0.0" }` are mandatory.
+- Scripts:
+
+| Script | Command |
+|---|---|
+| `build` | `tsc` |
+| `start` | `node dist/index.js` |
+| `dev` | `node --watch --experimental-strip-types --env-file=.env src/index.ts` |
+| `typecheck` | `tsc --noEmit` |
+| `test` | `node --test --experimental-strip-types "src/**/*.test.ts"` |
+| `lint` | `biome lint ./src` |
+| `format` | `biome format --write ./src` |
+| `check` | `biome check ./src` |
+| `check:fix` | `biome check --write ./src` |
+
+- Dependencies:
+
+| Package | Type | Condition |
+|---|---|---|
+| `pino` | dependency | always |
+| `zod` | dependency | always |
+| `zod-config` | dependency | always |
+| `fastify` | dependency | `withHttp` |
+| `@fastify/sensible` | dependency | `withHttp` |
+| `prom-client` | dependency | `withMetrics` |
+| `sequelize` | dependency | `withDb` |
+| `pg` | dependency | `withDb` |
+| `pg-hstore` | dependency | `withDb` |
+| `typescript` (`"latest"`) | devDependency | always |
+| `@types/node` (`"latest"`) | devDependency | always |
+| `@biomejs/biome` | devDependency | always |
+| `pino-pretty` | devDependency | always |
+| `@types/pg` | devDependency | `withDb` |
+
+> `tsx` and `ts-node` are **not** included. Node 24 covers the full dev and test workflow natively.
+
+---
+
+### `tsconfig.json`
+
+```json
+{
+    "compilerOptions": {
+        "target": "ES2024",
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
+        "lib": ["ES2024"],
+        "outDir": "dist",
+        "rootDir": "src",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "declaration": true,
+        "sourceMap": true,
+        "noUncheckedIndexedAccess": true,
+        "noImplicitOverride": true
+    },
+    "include": ["src"],
+    "exclude": ["node_modules", "dist"]
+}
+```
+
+---
+
+### `biome.jsonc`
+
+Copy verbatim from `assets/biome.jsonc`.
+
+---
+
+### `.vscode/settings.json`
+
+Copy verbatim from `assets/vscode-settings.json`.
+
+---
+
+### `config.yaml.example`
+
+Copy from `assets/config.yaml.example`. Omit the `port` field when `withHttp=no`.
+
+> Committed to source control. Contains non-secret base configuration only. Copy to `config.yaml` and adjust per environment.
+
+---
+
+### `.env.example`
+
+Copy from `assets/.env.example`. Omit the `DATABASE_URL` line when `withDb=no`.
+
+> Not committed to source control (`.gitignore` excludes `.env`). Contains secrets and values that must override `config.yaml`.
+
+---
+
+### `.gitignore`
+
+Copy verbatim from `assets/.gitignore`.
+
+> `config.yaml` is excluded because it may be customised per developer. The committed `config.yaml.example` is the source of truth for defaults.
+
+---
+
+### `src/config.ts`
+
+Read `assets/src/config.ts` as the starting template, then adapt it to the enabled options:
+
+- **Omit** the `port` field from the schema when `withHttp=no`.
+- **Omit** the `dbUrl` field and the `DATABASE_URL` rename mapping when `withDb=no`.
+- Keep all import statements and the `__dirname` path resolution exactly as shown in the asset — they are required for the `yamlAdapter` to locate `config.yaml` reliably regardless of the working directory.
+
+---
+
+### `src/logger.ts`
+
+Copy verbatim from `assets/src/logger.ts`.
+
+---
+
+### Server-side modules
+
+Read `references/server.md` for the full specifications of:
+
+- `src/database.ts` *(withDb)* — Sequelize instance and connect/close helpers
+- `src/metrics.ts` *(withMetrics)* — prom-client registry, ELU gauge, request histogram
+- `src/server.ts` *(withHttp)* — Fastify setup, shutdown hook, route registration
+- `src/index.ts` — entry point; two variants (use asset templates, adapt per enabled options)
+
+---
+
+### Endpoint layer
+
+Read `references/endpoints.md` for the full specifications of the layered architecture and all files under `src/endpoints/`.
+
+---
+
+## Step 4 — Post-generation message
+
+```
+✅  Project <projectName> scaffolded.
+
+Next steps:
+  cd <projectName>
+  cp config.yaml.example config.yaml   # tune base config
+  cp .env.example .env                 # add secrets
+  npm install
+  npm run dev                          # Node 24 runs TypeScript directly
+
+Endpoints:                             # (withHttp only)
+  GET /health/live                     Kubernetes liveness probe
+  GET /health/ready                    Kubernetes readiness probe
+  GET /metrics                         Prometheus scrape endpoint (withMetrics only)
+
+Useful scripts:
+  npm test                             Run tests with Node 24 type-stripping
+  npm run check                        Biome lint + format
+  npm run build                        Compile to dist/ for production
+```
+
+---
+
+## Example prompts
+
+> "Scaffold **order-service** with HTTP and metrics, no database."
+→ `projectName=order-service`, `withHttp=yes`, `withMetrics=yes`, `withDb=no`
+
+> "Create a **worker** — no HTTP, just a database."
+→ `projectName=worker`, `withHttp=no`, `withMetrics=no`, `withDb=yes`
+
+> "New project **api** with everything."
+→ `projectName=api`, `withHttp=yes`, `withMetrics=yes`, `withDb=yes`
