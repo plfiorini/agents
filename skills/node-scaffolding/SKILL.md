@@ -65,31 +65,28 @@ inputs:
 
 ## Step 1 — Resolve parameters
 
-Use the values collected from the UI inputs above:
+| Variable | Meaning |
+|---|---|
+| `${input:projectName}` | directory name and `package.json` `name` |
+| `${input:withHttp}` | `"yes"` → generate server files |
+| `${input:withMetrics}` | `"yes"` → generate metrics files |
+| `${input:withDb}` | `"yes"` → generate database files |
+| `${input:withMigrations}` | `"yes"` → generate Umzug migration runner and example migrations |
+| `${input:withDocker}` | `"yes"` → generate `Dockerfile` and `.dockerignore` |
+| `${input:withOpenApi}` | `"yes"` → register swagger plugins and annotate routes |
 
-| Variable | Comes from | Meaning |
-|---|---|---|
-| `${input:projectName}` | text input | directory name and `package.json` `name` |
-| `${input:withHttp}` | pick | `"yes"` → generate server files |
-| `${input:withMetrics}` | pick | `"yes"` → generate metrics files |
-| `${input:withDb}` | pick | `"yes"` → generate database files |
-| `${input:withMigrations}` | pick | `"yes"` → generate Umzug migration runner and example migration |
-| `${input:withDocker}` | pick | `"yes"` → generate `Dockerfile` and `.dockerignore` |
-| `${input:withOpenApi}` | pick | `"yes"` → register `@fastify/swagger` + `@fastify/swagger-ui` and annotate routes |
-
-If the user's message already contains all parameters (e.g. *"scaffold payments-api with http and metrics"*), infer the values and skip the UI inputs that were already answered.
+If the user's message already contains all parameters, infer the values and skip already-answered inputs.
 
 **Constraints:**
-- If `${input:withMetrics}` is `"yes"` and `${input:withHttp}` is `"no"`, treat `withHttp` as `"yes"` and inform the user.
-- If `${input:withOpenApi}` is `"yes"` and `${input:withHttp}` is `"no"`, treat `withHttp` as `"yes"` and inform the user.
-- If `${input:withMigrations}` is `"yes"` and `${input:withDb}` is `"no"`, treat `withDb` as `"yes"` and inform the user.
-
+- `withMetrics=yes` and `withHttp=no` → treat `withHttp` as `"yes"` and inform the user.
+- `withOpenApi=yes` and `withHttp=no` → treat `withHttp` as `"yes"` and inform the user.
+- `withMigrations=yes` and `withDb=no` → treat `withDb` as `"yes"` and inform the user.
 
 ---
 
 ## Step 2 — Generate files
 
-Output every file listed below in full — no placeholders, no `// ...`, no truncation. Generate conditional files only when the relevant input is `"yes"`.
+Output every file in full — no placeholders, no `// ...`, no truncation. Generate conditional files only when the relevant input is `"yes"`.
 
 ### Project structure
 
@@ -131,64 +128,43 @@ Output every file listed below in full — no placeholders, no `// ...`, no trun
             └── metrics.test.ts
 ```
 
-> **OpenAPI (`withOpenApi`):** no extra files are created. The swagger plugins are wired into
-> `src/server.ts` and JSON Schema declarations are added inline to each route handler.
+> **OpenAPI (`withOpenApi`):** no extra files — swagger plugins wire into `src/server.ts` and JSON Schema declarations go inline on each route.
 
-> **Endpoint convention:** every HTTP endpoint lives under `src/endpoints/<endpoint>/` with five files. The `metrics` endpoint has no repository because it does not access a database.
+> **Endpoint convention:** every HTTP endpoint lives under `src/endpoints/<endpoint>/` with five files. The `metrics` endpoint has no repository (no database access).
 
 ---
 
 ## Step 3 — File specifications
 
-### Global rules (apply to every generated file)
+### Global rules
 
-#### TypeScript
-- Use the **latest stable version** of TypeScript (`"typescript": "latest"`).
-- Enable `strict: true` plus `noUncheckedIndexedAccess` and `noImplicitOverride`.
-- Target `ESNext`, `lib: ["ESNext"]`.
+#### TypeScript & Node.js 24
 
-#### Type-stripping
-- Use **Node.js 24 native type-stripping** (`--experimental-strip-types`) for all scripts (`start`, `dev`, `test`).
-- Do **not** use `ts-node` or `tsx`. Node 24 runs TypeScript source directly — there is no compilation step.
+- Latest stable TypeScript (`"typescript": "latest"`), `strict: true`, `noUncheckedIndexedAccess`, `noImplicitOverride`, target `ESNext`.
+- Run TypeScript source directly via `--experimental-strip-types` — no `ts-node`/`tsx`, no compile step.
+- **Local imports use `.ts` extension** (not `.js`) — Node 24 runs source files directly and there is no compiled output to point at.
+- `"type": "module"`, `"module": "NodeNext"`, `"moduleResolution": "NodeNext"`, `"allowImportingTsExtensions": true`.
+- File-relative paths: `import.meta.url` + `path.dirname`; never `__dirname` or `__filename`.
+- Top-level `await` is valid in ESM entry points.
 
-#### Module system
-- `"type": "module"` in `package.json` — ES Modules are mandatory.
-- Use `import`/`export` exclusively. Never `require`, `module.exports`, `__dirname`, or `__filename`.
-- Use `import.meta.url` with `path.dirname` wherever a file-relative path is needed.
-- **All local imports must use the `.ts` extension** — Node 24 runs TypeScript directly; there is no compiled `.js` to point at.
-- `"module": "NodeNext"` and `"moduleResolution": "NodeNext"` in `tsconfig.json`.
-- `"allowImportingTsExtensions": true` is required in `tsconfig.json` because imports use `.ts` extensions.
-
-#### Async & I/O
-- `async/await` everywhere — no `.then()/.catch()` chains, no nested callbacks.
-- No synchronous I/O — `fs/promises` only; never any `*Sync` variant.
-- Wrap every `await` in `try/catch` or let errors propagate to a documented top-level handler.
-- Top-level `await` is allowed in ESM entry points (e.g. `src/index.ts`, `src/config.ts`).
-
-#### Code style — Biome-compliant
-
-Every generated TypeScript file must pass `biome check` without modifications:
+#### Biome style
 
 | Rule | Value |
 |---|---|
 | Indent | 4 spaces |
-| Line width | 120 characters |
+| Line width | 120 |
 | Quotes | Double (`"`) |
 | Semicolons | Always |
-| Trailing commas | All (arrays, objects, function parameters) |
-| Arrow parens | Omit for single parameter (`x => x`) |
-| `const` / `let` | `const` by default; `let` only when reassignment is needed; never `var` |
-| Equality | `===` / `!==` only |
-| `eval` | Never — `noGlobalEval` is `error` in the Biome config |
-| Paths | `path.join()` / `path.resolve()` only; never string concatenation |
-| Secrets | Environment variables only; never hardcoded |
+| Trailing commas | All |
+| Arrow parens | Omit for single param (`x => x`) |
 
 ---
 
 ### `package.json`
 
-- `"type": "module"` and `"engines": { "node": ">=24.0.0" }` are mandatory.
-- Scripts:
+`"type": "module"` and `"engines": { "node": ">=24.0.0" }` are mandatory.
+
+Scripts:
 
 | Script | Command | Condition |
 |---|---|---|
@@ -204,7 +180,7 @@ Every generated TypeScript file must pass `biome check` without modifications:
 | `migrate:down` | `node --experimental-strip-types src/migrate.ts down` | `withMigrations` |
 | `migrate:pending` | `node --experimental-strip-types src/migrate.ts pending` | `withMigrations` |
 
-- Dependencies:
+Dependencies:
 
 | Package | Type | Condition |
 |---|---|---|
@@ -234,19 +210,13 @@ Every generated TypeScript file must pass `biome check` without modifications:
 
 Copy verbatim from `assets/tsconfig.json`.
 
----
-
 ### `biome.jsonc`
 
 Copy verbatim from `assets/biome.jsonc`.
 
----
-
 ### `.vscode/settings.json`
 
 Copy verbatim from `assets/vscode-settings.json`.
-
----
 
 ### `config.yaml.example`
 
@@ -254,80 +224,47 @@ Copy from `assets/config.yaml.example`. Omit the `port` field when `withHttp=no`
 
 > Committed to source control. Contains non-secret base configuration only. Copy to `config.yaml` and adjust per environment.
 
----
-
 ### `.env.example`
 
 Copy from `assets/.env.example`. Omit the `DATABASE_URL` line when `withDb=no`.
-
-> Not committed to source control (`.gitignore` excludes `.env`). Contains secrets and values that must override `config.yaml`.
-
----
 
 ### `.gitignore`
 
 Copy verbatim from `assets/.gitignore`.
 
-> `config.yaml` is excluded because it may be customised per developer. The committed `config.yaml.example` is the source of truth for defaults.
-
----
-
 ### `src/config.ts`
 
-Read `assets/src/config.ts` as the starting template, then adapt it to the enabled options:
+Read `assets/src/config.ts` as template, then adapt:
 
-- **Omit** the `port` field from the schema when `withHttp=no`.
-- **Omit** the `dbUrl` field and the `DATABASE_URL` rename mapping when `withDb=no`.
-- **Add** the `openapi` nested object to the schema when `withOpenApi=yes` — see `references/openapi.md` for the exact field definitions.
-- Keep all import statements and the `__dirname` path resolution exactly as shown in the asset — they are required for the `yamlAdapter` to locate `config.yaml` reliably regardless of the working directory.
-
----
+- Omit `port` field when `withHttp=no`.
+- Omit `dbUrl` field and `DATABASE_URL` mapping when `withDb=no`.
+- Add `openapi` nested object when `withOpenApi=yes` (see `references/openapi.md` for exact field definitions).
+- Keep all imports and `import.meta.url` path resolution exactly as shown in the asset — required for `yamlAdapter` to locate `config.yaml` reliably.
 
 ### `src/logger.ts`
 
 Copy verbatim from `assets/src/logger.ts`.
 
----
-
 ### Server-side modules
 
-Read `references/server.md` for the full specifications of:
+Read `references/server.md` for:
 
 - `src/database.ts` *(withDb)* — Sequelize instance and connect/close helpers
 - `src/metrics.ts` *(withMetrics)* — prom-client registry, ELU gauge, request histogram
 - `src/server.ts` *(withHttp)* — Fastify setup, shutdown hook, route registration
-- `src/index.ts` — entry point; three variants (copy verbatim from asset templates based on enabled options)
+- `src/index.ts` — three variants (copy verbatim from asset based on `withHttp`/`withDb`)
 
-When `withMigrations=yes`, also read `references/migrations.md` for:
+When `withMigrations=yes`, also read `references/migrations.md` for `src/migrate.ts` and example migration files.
 
-- `src/migrate.ts` — Umzug-based migration runner supporting `.ts` and `.up.sql` files (copy from `assets/src/migrate.ts`)
-- `migrations/20240101000000-create-example.ts` — starter TypeScript migration (copy from asset)
-- `migrations/20240101000001-create-example.up.sql` + `.down.sql` — starter SQL migration pair (copy from assets)
-
-When `withOpenApi=yes`, also read `references/openapi.md` for:
-
-- Config schema additions (`openapi` nested object)
-- `src/server.ts` plugin registration (`@fastify/swagger` + `@fastify/swagger-ui` before routes)
-- JSON Schema annotations required on each route
-
----
+When `withOpenApi=yes`, also read `references/openapi.md` for config additions, `src/server.ts` plugin registration, and route schema annotations.
 
 ### Endpoint layer
 
-Read `references/endpoints.md` for the full specifications of the layered architecture and all files under `src/endpoints/`.
-
----
+Read `references/endpoints.md` for all files under `src/endpoints/`.
 
 ### `Dockerfile` *(withDocker)*
 
-Copy verbatim from `assets/Dockerfile`.
-
-The image uses a two-stage Alpine build: stage `deps` installs production-only
-dependencies, stage `runtime` copies in only `node_modules`, `src/`, and `package.json`
-and runs as a non-root user. Because Node 24 runs TypeScript directly via
-`--experimental-strip-types` there is no compiled output — `src/` is the application.
-
----
+Copy verbatim from `assets/Dockerfile`. Two-stage Alpine build; no compile step — `src/` runs directly as the application.
 
 ### `.dockerignore` *(withDocker)*
 
@@ -337,55 +274,12 @@ Copy verbatim from `assets/.dockerignore`.
 
 ## Step 4 — Post-generation message
 
-```
-✅  Project <projectName> scaffolded.
-
-Next steps:
-  cd <projectName>
-  cp config.yaml.example config.yaml   # tune base config
-  cp .env.example .env                 # add secrets
-  npm install
-  npm run dev                          # Node 24 runs TypeScript directly
-
-Endpoints:                             # (withHttp only)
-  GET /health/live                     Kubernetes liveness probe
-  GET /health/ready                    Kubernetes readiness probe
-  GET /metrics                         Prometheus scrape endpoint (withMetrics only)
-  GET /documentation                   Swagger UI (withOpenApi only)
-
-Migrations:                            # (withMigrations only)
-  npm run migrate                      Apply all pending migrations
-  npm run migrate:down                 Revert last migration
-  npm run migrate:pending              List unapplied migrations
-
-Useful scripts:
-  npm test                             Run tests with Node 24 type-stripping
-  npm run check                        Biome lint + format
-  npm run typecheck                    Type-check without running
-
-Docker:                                # (withDocker only)
-  docker build -t <projectName> .
-  docker run --rm --env-file .env -p 3000:3000 <projectName>
-```
+Print the template from `assets/post-gen-message.md`, substituting `<projectName>` and omitting lines/sections whose condition does not apply.
 
 ---
 
-## Example prompts
+## Examples
 
-> "Scaffold **order-service** with HTTP and metrics, no database."
-→ `projectName=order-service`, `withHttp=yes`, `withMetrics=yes`, `withDb=no`
-
-> "Create a **worker** — no HTTP, just a database."
-→ `projectName=worker`, `withHttp=no`, `withMetrics=no`, `withDb=yes`
-
-> "New project **api** with everything."
-→ `projectName=api`, `withHttp=yes`, `withMetrics=yes`, `withDb=yes`
-
-> "Scaffold **gateway** with HTTP and Docker, no database."
-→ `projectName=gateway`, `withHttp=yes`, `withMetrics=no`, `withDb=no`, `withDocker=yes`
-
-> "New **catalog-api** with HTTP, OpenAPI docs, and a database."
-→ `projectName=catalog-api`, `withHttp=yes`, `withOpenApi=yes`, `withDb=yes`
-
-> "Scaffold **billing-service** with a database and migrations."
-→ `projectName=billing-service`, `withHttp=no`, `withDb=yes`, `withMigrations=yes`
+> "Scaffold **order-service** with HTTP and metrics, no database" → `withHttp=yes`, `withMetrics=yes`, `withDb=no`
+> "Create a **worker** — no HTTP, just a database" → `withHttp=no`, `withDb=yes`
+> "New **api** with everything" → all flags `yes`
