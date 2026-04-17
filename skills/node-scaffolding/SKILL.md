@@ -296,7 +296,7 @@ Read `references/server.md` for the full specifications of:
 - `src/database.ts` *(withDb)* — Sequelize instance and connect/close helpers
 - `src/metrics.ts` *(withMetrics)* — prom-client registry, ELU gauge, request histogram
 - `src/server.ts` *(withHttp)* — Fastify setup, shutdown hook, route registration
-- `src/index.ts` — entry point; two variants (use asset templates, adapt per enabled options)
+- `src/index.ts` — entry point; three variants (copy verbatim from asset templates based on enabled options)
 
 When `withMigrations=yes`, also read `references/migrations.md` for:
 

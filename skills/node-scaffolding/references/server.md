@@ -68,8 +68,6 @@
 
 Copy `assets/src/index.http.ts` verbatim when `withHttp=yes`.
 
-Copy `assets/src/index.worker.ts` as a starting point when `withHttp=no`, then adapt:
-- Remove the `connectDatabase` / `closeDatabase` import line when `withDb=no`.
-- Remove the `try { await connectDatabase() }` block when `withDb=no`.
-- Remove `await closeDatabase()` from the `shutdown` handler when `withDb=no`.
-- When `withDb=no`, `shutdown` has no async work, so it can be a plain `() => void` function.
+Copy `assets/src/index.worker.with-db.ts` verbatim when `withHttp=no` and `withDb=yes`.
+
+Copy `assets/src/index.worker.no-db.ts` verbatim when `withHttp=no` and `withDb=no`.
