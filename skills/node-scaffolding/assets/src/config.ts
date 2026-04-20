@@ -12,7 +12,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 //   dbUrl  — only when withDb=yes
 const schema = z.object({
     env: z.enum(["development", "production", "test"]).default("development"),
-    logLevel: z.enum(["trace", "debug", "info", "warn", "error", "fatal"]).default("info"),
+    log: z.object({
+        level: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
+        type: z.enum(["json", "pretty"]).default("pretty"),
+    }).default({ level: "info", type: "pretty" }),
     port: z.coerce.number().int().min(1).max(65535).default(3000),
     dbUrl: z.string().url("DATABASE_URL must be a valid connection URL"),
 });

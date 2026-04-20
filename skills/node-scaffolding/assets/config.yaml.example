@@ -2,7 +2,9 @@
 # Copy to config.yaml and adjust for your environment.
 
 env: development
-logLevel: debug
+log:
+  level: info
+  type: pretty
 # port is only needed when the HTTP server is enabled (withHttp=yes).
 port: 3000
 # openapi block is only needed when withOpenApi=yes.

@@ -238,6 +238,7 @@ Read `assets/src/config.ts` as template, then adapt:
 
 - Omit `port` field when `withHttp=no`.
 - Omit `dbUrl` field and `DATABASE_URL` mapping when `withDb=no`.
+- The `log` nested object is always present; include it as-is.
 - Add `openapi` nested object when `withOpenApi=yes` (see `references/openapi.md` for exact field definitions).
 - Keep all imports and `import.meta.url` path resolution exactly as shown in the asset — required for `yamlAdapter` to locate `config.yaml` reliably.
 
