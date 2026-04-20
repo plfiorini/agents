@@ -17,7 +17,7 @@ const schema = z.object({
         type: z.enum(["json", "pretty"]).default("pretty"),
     }).default({ level: "info", type: "pretty" }),
     port: z.coerce.number().int().min(1).max(65535).default(3000),
-    dbUrl: z.string().url("DATABASE_URL must be a valid connection URL"),
+    dbUrl: z.string().url("DB_URL must be a valid connection URL"),
 });
 
 export type Config = z.infer<typeof schema>;
@@ -31,11 +31,16 @@ export const config: Config = await loadConfig({
         // Path is resolved from src/ up one level to the project root.
         yamlAdapter({ path: path.join(__dirname, "..", "config.yaml") }),
         // Environment variables override YAML — use for secrets and per-env values.
-        // Maps SCREAMING_SNAKE_CASE variable names to camelCase schema keys.
+        // Reads only vars prefixed with <PROJECT_NAME>_ and strips that prefix before
+        // mapping to schema keys. Double-underscore (__) is the nesting separator.
         envAdapter({
-            renameMapping: {
-                DATABASE_URL: "dbUrl",
-            },
+            keyMatching: "lenient",
+            regex: /^<PROJECT_NAME>_/,
+            transform: ({ key, value }) => ({
+                key: key.replace(/^<PROJECT_NAME>_/, ""),
+                value,
+            }),
+            nestingSeparator: "__",
         }),
     ],
 });

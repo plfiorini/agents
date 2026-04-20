@@ -226,7 +226,7 @@ Copy from `assets/config.yaml.example`. Omit the `port` field when `withHttp=no`
 
 ### `.env.example`
 
-Copy from `assets/.env.example`. Omit the `DATABASE_URL` line when `withDb=no`.
+Copy from `assets/.env.example`. Replace `<PROJECT_NAME>` using the same SCREAMING_SNAKE_CASE rule as `src/config.ts`. Omit the `<PROJECT_NAME>_DB_URL` line when `withDb=no`.
 
 ### `.gitignore`
 
@@ -236,8 +236,9 @@ Copy verbatim from `assets/.gitignore`.
 
 Read `assets/src/config.ts` as template, then adapt:
 
+- Replace every literal `<PROJECT_NAME>` with the SCREAMING_SNAKE_CASE form of `projectName`: replace each `-` with `_` then uppercase (e.g. `foo-bar` → `FOO_BAR`, `foobar` → `FOOBAR`).
 - Omit `port` field when `withHttp=no`.
-- Omit `dbUrl` field and `DATABASE_URL` mapping when `withDb=no`.
+- Omit `dbUrl` field when `withDb=no`.
 - The `log` nested object is always present; include it as-is.
 - Add `openapi` nested object when `withOpenApi=yes` (see `references/openapi.md` for exact field definitions).
 - Keep all imports and `import.meta.url` path resolution exactly as shown in the asset — required for `yamlAdapter` to locate `config.yaml` reliably.
