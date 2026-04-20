@@ -199,7 +199,7 @@ Dependencies:
 | `typescript` (`"latest"`) | devDependency | always |
 | `@types/node` (`"latest"`) | devDependency | always |
 | `@biomejs/biome` | devDependency | always |
-| `pino-pretty` | devDependency | always |
+| `pino-pretty` | dependency | always |
 | `@types/pg` | devDependency | `withDb` |
 
 > `tsx` and `ts-node` are **not** included. Node 24 covers the full dev and test workflow natively.
