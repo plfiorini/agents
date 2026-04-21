@@ -6,7 +6,7 @@ description: >
   whenever the user wants to create a new Node.js app, set up a TypeScript
   service, bootstrap an API, start a microservice, or initialize a backend
   project — even if they don't say "scaffold" explicitly.
-argument-hint: "[project-name] [--http] [--metrics] [--db] [--migrations] [--docker] [--openapi]"
+argument-hint: "[project-name] [--http] [--metrics] [--db] [--migrations] [--docker] [--openapi] [--devcontainer]"
 metadata:
   author: Pier Luigi Fiorini
   license: MIT
@@ -59,6 +59,13 @@ inputs:
       - "yes"
       - "no"
     default: "no"
+  - id: withDevContainer
+    description: "Add a VS Code Dev Container configuration?"
+    type: pickString
+    options:
+      - "yes"
+      - "no"
+    default: "no"
 ---
 
 # Scaffold a Node.js + TypeScript Project
@@ -74,6 +81,7 @@ inputs:
 | `${input:withMigrations}` | `"yes"` → generate Umzug migration runner and example migrations |
 | `${input:withDocker}` | `"yes"` → generate `Dockerfile` and `.dockerignore` |
 | `${input:withOpenApi}` | `"yes"` → register swagger plugins and annotate routes |
+| `${input:withDevContainer}` | `"yes"` → generate `.devcontainer/devcontainer.json` |
 
 If the user's message already contains all parameters, infer the values and skip already-answered inputs.
 
@@ -100,6 +108,8 @@ Output every file in full — no placeholders, no `// ...`, no truncation. Gener
 ├── .gitignore
 ├── Dockerfile                                    (withDocker)
 ├── .dockerignore                                 (withDocker)
+├── .devcontainer/                                (withDevContainer)
+│   └── devcontainer.json
 ├── migrations/                                   (withMigrations)
 │   ├── 20240101000000-create-example.ts
 │   ├── 20240101000001-create-example.up.sql
@@ -263,6 +273,18 @@ When `withOpenApi=yes`, also read `references/openapi.md` for config additions, 
 ### Endpoint layer
 
 Read `references/endpoints.md` for all files under `src/endpoints/`.
+
+### `.devcontainer/devcontainer.json` *(withDevContainer)*
+
+Start from `assets/.devcontainer/devcontainer.json`, then apply:
+
+- When `withHttp=yes`, add a top-level `"forwardPorts": [3000]` field and a `"portsAttributes"` block:
+  ```json
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": { "label": "HTTP Server", "onAutoForward": "notify" }
+  }
+  ```
 
 ### `Dockerfile` *(withDocker)*
 
