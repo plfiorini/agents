@@ -16,6 +16,7 @@ RUN addgroup -S -g 1001 nodejs \
 
 COPY --chown=appuser:nodejs --from=deps /app/node_modules ./node_modules
 COPY --chown=appuser:nodejs src ./src
+COPY --chown=appuser:nodejs migrations ./migrations
 COPY --chown=appuser:nodejs package.json ./
 
 USER appuser

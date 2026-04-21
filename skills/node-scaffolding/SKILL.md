@@ -293,7 +293,9 @@ Start from `assets/.devcontainer/devcontainer.json`, then apply:
 
 ### `Dockerfile` *(withDocker)*
 
-Copy verbatim from `assets/Dockerfile`. Two-stage Alpine build; no compile step — `src/` runs directly as the application.
+Copy from `assets/Dockerfile`. Two-stage Alpine build; no compile step — `src/` runs directly as the application.
+
+- Omit the `COPY --chown=appuser:nodejs migrations ./migrations` line when `withMigrations=no`.
 
 ### `.dockerignore` *(withDocker)*
 
