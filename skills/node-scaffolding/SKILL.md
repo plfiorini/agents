@@ -115,7 +115,8 @@ Output every file in full — no placeholders, no `// ...`, no truncation. Gener
 │   ├── 20240101000001-create-example.up.sql
 │   └── 20240101000001-create-example.down.sql
 ├── .vscode/
-│   └── settings.json
+│   ├── settings.json
+│   └── extensions.json
 └── src/
     ├── index.ts
     ├── config.ts
@@ -226,7 +227,11 @@ Copy verbatim from `assets/biome.jsonc`.
 
 ### `.vscode/settings.json`
 
-Copy verbatim from `assets/vscode-settings.json`.
+Copy verbatim from `assets/.vscode/settings.json`.
+
+### `.vscode/extensions.json`
+
+Copy verbatim from `assets/.vscode/extensions.json`.
 
 ### `config.yaml.example`
 

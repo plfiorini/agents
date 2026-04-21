@@ -1,0 +1,9 @@
+{
+    "recommendations": [
+        "eamodio.gitlens",
+        "GitHub.copilot-chat",
+        "redhat.vscode-yaml",
+        "ms-azuretools.vscode-docker",
+        "biomejs.biome"
+    ]
+}
