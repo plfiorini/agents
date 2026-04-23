@@ -6,7 +6,7 @@ description: >
   whenever the user wants to create a new Node.js app, set up a TypeScript
   service, bootstrap an API, start a microservice, or initialize a backend
   project — even if they don't say "scaffold" explicitly.
-argument-hint: "[project-name] [--http] [--metrics] [--db] [--migrations] [--docker] [--openapi] [--devcontainer]"
+argument-hint: "[project-name] [--workspace-root|--path <target-path>] [--http] [--metrics] [--db] [--migrations] [--docker] [--openapi] [--devcontainer]"
 metadata:
   author: Pier Luigi Fiorini
   license: MIT
@@ -14,9 +14,20 @@ metadata:
 allowed-tools: Bash Read Write
 inputs:
   - id: projectName
-    description: "Project name — used as the directory name and package.json name"
+    description: "Project name — used as the package.json name and as the default directory name when creating under a custom path"
     type: promptString
     default: my-app
+  - id: projectLocation
+    description: "Where to create the project"
+    type: pickString
+    options:
+      - "workspace-root"
+      - "custom-path"
+    default: "workspace-root"
+  - id: targetPath
+    description: "Explicit target path when projectLocation=custom-path"
+    type: promptString
+    default: ""
   - id: withHttp
     description: "Add a Fastify HTTP server with Kubernetes health probes?"
     type: pickString
@@ -74,7 +85,9 @@ inputs:
 
 | Variable | Meaning |
 |---|---|
-| `${input:projectName}` | directory name and `package.json` `name` |
+| `${input:projectName}` | `package.json` `name`; also the leaf directory name when the user gives a parent directory instead of a full target path |
+| `${input:projectLocation}` | `"workspace-root"` → generate directly in the current IDE workspace root; `"custom-path"` → generate in the specified path |
+| `${input:targetPath}` | required only when `projectLocation=custom-path`; may be either the final project directory or a parent directory |
 | `${input:withHttp}` | `"yes"` → generate server files |
 | `${input:withMetrics}` | `"yes"` → generate metrics files |
 | `${input:withDb}` | `"yes"` → generate database files |
@@ -85,7 +98,16 @@ inputs:
 
 If the user's message already contains all parameters, infer the values and skip already-answered inputs.
 
+Infer the location parameters from the user's wording when possible:
+
+- "in the workspace root", "here", "in this repo", "in the current IDE workspace" → `projectLocation=workspace-root`
+- "at /some/path", "under /some/path", "in ~/code/foo", "use this path" → `projectLocation=custom-path` and set `targetPath` from the provided path
+- If unspecified, default to `projectLocation=workspace-root`
+
 **Constraints:**
+- `projectLocation=custom-path` requires a non-empty `targetPath`.
+- If the user gives a parent directory rather than a final project directory, create the project in `<targetPath>/<projectName>`.
+- If the user gives a full target directory path, create the project directly at that path and do not append `projectName` again.
 - `withMetrics=yes` and `withHttp=no` → treat `withHttp` as `"yes"` and inform the user.
 - `withOpenApi=yes` and `withHttp=no` → treat `withHttp` as `"yes"` and inform the user.
 - `withMigrations=yes` and `withDb=no` → treat `withDb` as `"yes"` and inform the user.
@@ -99,7 +121,7 @@ Output every file in full — no placeholders, no `// ...`, no truncation. Gener
 ### Project structure
 
 ```
-<projectName>/
+<targetRoot>/
 ├── package.json
 ├── tsconfig.json
 ├── biome.jsonc
@@ -138,6 +160,13 @@ Output every file in full — no placeholders, no `// ...`, no truncation. Gener
             ├── metrics.service.ts
             └── metrics.test.ts
 ```
+
+Where `<targetRoot>` is:
+
+- the current IDE workspace root when `projectLocation=workspace-root`
+- the resolved custom directory when `projectLocation=custom-path`
+
+When targeting the workspace root, write the files directly into the current workspace. Do not create an extra `<projectName>/` wrapper directory.
 
 > **OpenAPI (`withOpenApi`):** no extra files — swagger plugins wire into `src/server.ts` and JSON Schema declarations go inline on each route.
 
@@ -307,10 +336,12 @@ Copy verbatim from `assets/dockerignore`.
 
 Print the template from `assets/post-gen-message.md`, substituting `<projectName>` and omitting lines/sections whose condition does not apply.
 
+Also state the final output path explicitly so the user can verify where the project was created.
+
 ---
 
 ## Examples
 
-> "Scaffold **order-service** with HTTP and metrics, no database" → `withHttp=yes`, `withMetrics=yes`, `withDb=no`
-> "Create a **worker** — no HTTP, just a database" → `withHttp=no`, `withDb=yes`
-> "New **api** with everything" → all flags `yes`
+> "Scaffold **order-service** in the workspace root with HTTP and metrics, no database" → `projectLocation=workspace-root`, `withHttp=yes`, `withMetrics=yes`, `withDb=no`
+> "Create **worker** at `/home/me/services`" → `projectLocation=custom-path`, `targetPath=/home/me/services`, final directory `/home/me/services/worker`
+> "New **api** at `~/code/api` with everything" → `projectLocation=custom-path`, `targetPath=~/code/api`, final directory `~/code/api`, all flags `yes`
