@@ -227,11 +227,11 @@ Copy verbatim from `assets/biome.jsonc`.
 
 ### `.vscode/settings.json`
 
-Copy verbatim from `assets/.vscode/settings.json`.
+Copy verbatim from `assets/vscode/settings.json`.
 
 ### `.vscode/extensions.json`
 
-Copy verbatim from `assets/.vscode/extensions.json`.
+Copy verbatim from `assets/vscode/extensions.json`.
 
 ### `config.yaml.example`
 
@@ -241,11 +241,11 @@ Copy from `assets/config.yaml.example`. Omit the `port` field when `withHttp=no`
 
 ### `.env.example`
 
-Copy from `assets/.env.example`. Replace `<PROJECT_NAME>` using the same SCREAMING_SNAKE_CASE rule as `src/config.ts`. Omit the `<PROJECT_NAME>_DB_URL` line when `withDb=no`.
+Copy from `assets/env.example`. Replace `<PROJECT_NAME>` using the same SCREAMING_SNAKE_CASE rule as `src/config.ts`. Omit the `<PROJECT_NAME>_DB_URL` line when `withDb=no`.
 
 ### `.gitignore`
 
-Copy verbatim from `assets/.gitignore`.
+Copy verbatim from `assets/gitignore`.
 
 ### `src/config.ts`
 
@@ -281,7 +281,7 @@ Read `references/endpoints.md` for all files under `src/endpoints/`.
 
 ### `.devcontainer/devcontainer.json` *(withDevContainer)*
 
-Start from `assets/.devcontainer/devcontainer.json`, then apply:
+Start from `assets/devcontainer/devcontainer.json`, then apply:
 
 - When `withHttp=yes`, add a top-level `"forwardPorts": [3000]` field and a `"portsAttributes"` block:
   ```json
@@ -299,7 +299,7 @@ Copy from `assets/Dockerfile`. Two-stage Alpine build; no compile step — `src/
 
 ### `.dockerignore` *(withDocker)*
 
-Copy verbatim from `assets/.dockerignore`.
+Copy verbatim from `assets/dockerignore`.
 
 ---
 
