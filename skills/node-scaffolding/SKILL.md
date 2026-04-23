@@ -83,22 +83,16 @@ inputs:
 
 ## Step 1 — Resolve parameters
 
-| Variable | Meaning |
-|---|---|
-| `${input:projectName}` | `package.json` `name`; also the leaf directory name when the user gives a parent directory instead of a full target path |
-| `${input:projectLocation}` | `"workspace-root"` → generate directly in the current IDE workspace root; `"custom-path"` → generate in the specified path |
-| `${input:targetPath}` | required only when `projectLocation=custom-path`; may be either the final project directory or a parent directory |
-| `${input:withHttp}` | `"yes"` → generate server files |
-| `${input:withMetrics}` | `"yes"` → generate metrics files |
-| `${input:withDb}` | `"yes"` → generate database files |
-| `${input:withMigrations}` | `"yes"` → generate Umzug migration runner and example migrations |
-| `${input:withDocker}` | `"yes"` → generate `Dockerfile` and `.dockerignore` |
-| `${input:withOpenApi}` | `"yes"` → register swagger plugins and annotate routes |
-| `${input:withDevContainer}` | `"yes"` → generate `.devcontainer/devcontainer.json` |
+Inputs:
+
+- `projectName`: `package.json` name; also the leaf directory name when the user supplies only a parent path
+- `projectLocation`: `workspace-root` or `custom-path`
+- `targetPath`: required only for `custom-path`; may be either the final project directory or a parent directory
+- `withHttp`, `withMetrics`, `withDb`, `withMigrations`, `withDocker`, `withOpenApi`, `withDevContainer`: feature flags
 
 If the user's message already contains all parameters, infer the values and skip already-answered inputs.
 
-Infer the location parameters from the user's wording when possible:
+Infer location from the user's wording:
 
 - "in the workspace root", "here", "in this repo", "in the current IDE workspace" → `projectLocation=workspace-root`
 - "at /some/path", "under /some/path", "in ~/code/foo", "use this path" → `projectLocation=custom-path` and set `targetPath` from the provided path
@@ -118,55 +112,28 @@ Infer the location parameters from the user's wording when possible:
 
 Output every file in full — no placeholders, no `// ...`, no truncation. Generate conditional files only when the relevant input is `"yes"`.
 
-### Project structure
+Write files under `<targetRoot>`:
 
-```
-<targetRoot>/
-├── package.json
-├── tsconfig.json
-├── biome.jsonc
-├── config.yaml.example
-├── .env.example
-├── .gitignore
-├── Dockerfile                                    (withDocker)
-├── .dockerignore                                 (withDocker)
-├── .devcontainer/                                (withDevContainer)
-│   └── devcontainer.json
-├── migrations/                                   (withMigrations)
-│   ├── 20240101000000-create-example.ts
-│   ├── 20240101000001-create-example.up.sql
-│   └── 20240101000001-create-example.down.sql
-├── .vscode/
-│   ├── settings.json
-│   └── extensions.json
-└── src/
-    ├── index.ts
-    ├── config.ts
-    ├── logger.ts
-    ├── database.ts                               (withDb)
-    ├── migrate.ts                                (withMigrations)
-    ├── metrics.ts                                (withMetrics)
-    ├── server.ts                                 (withHttp)
-    └── endpoints/
-        ├── health/                               (withHttp)
-        │   ├── health.route.ts
-        │   ├── health.controller.ts
-        │   ├── health.service.ts
-        │   ├── health.repository.ts
-        │   └── health.test.ts
-        └── metrics/                              (withHttp + withMetrics)
-            ├── metrics.route.ts
-            ├── metrics.controller.ts
-            ├── metrics.service.ts
-            └── metrics.test.ts
-```
+- workspace root when `projectLocation=workspace-root`
+- resolved custom directory when `projectLocation=custom-path`
 
-Where `<targetRoot>` is:
+When targeting the workspace root, write directly into the current workspace and do not create an extra `<projectName>/` wrapper directory.
 
-- the current IDE workspace root when `projectLocation=workspace-root`
-- the resolved custom directory when `projectLocation=custom-path`
+Always generate:
 
-When targeting the workspace root, write the files directly into the current workspace. Do not create an extra `<projectName>/` wrapper directory.
+- `package.json`, `tsconfig.json`, `biome.jsonc`, `config.yaml.example`, `.env.example`, `.gitignore`
+- `.vscode/settings.json`, `.vscode/extensions.json`
+- `src/index.ts`, `src/config.ts`, `src/logger.ts`
+
+Conditional files:
+
+- `Dockerfile`, `.dockerignore` when `withDocker=yes`
+- `.devcontainer/devcontainer.json` when `withDevContainer=yes`
+- `migrations/20240101000000-create-example.ts`, `migrations/20240101000001-create-example.up.sql`, `migrations/20240101000001-create-example.down.sql`, `src/migrate.ts` when `withMigrations=yes`
+- `src/database.ts` when `withDb=yes`
+- `src/metrics.ts` when `withMetrics=yes`
+- `src/server.ts` and `src/endpoints/health/*` when `withHttp=yes`
+- `src/endpoints/metrics/{metrics.route.ts,metrics.controller.ts,metrics.service.ts,metrics.test.ts}` when `withHttp=yes` and `withMetrics=yes`
 
 > **OpenAPI (`withOpenApi`):** no extra files — swagger plugins wire into `src/server.ts` and JSON Schema declarations go inline on each route.
 
@@ -178,25 +145,13 @@ When targeting the workspace root, write the files directly into the current wor
 
 ### Global rules
 
-#### TypeScript & Node.js 24
-
 - Latest stable TypeScript (`"typescript": "latest"`), `strict: true`, `noUncheckedIndexedAccess`, `noImplicitOverride`, target `ESNext`.
 - Run TypeScript source directly via `--experimental-strip-types` — no `ts-node`/`tsx`, no compile step.
 - **Local imports use `.ts` extension** (not `.js`) — Node 24 runs source files directly and there is no compiled output to point at.
 - `"type": "module"`, `"module": "NodeNext"`, `"moduleResolution": "NodeNext"`, `"allowImportingTsExtensions": true`.
 - File-relative paths: `import.meta.url` + `path.dirname`; never `__dirname` or `__filename`.
 - Top-level `await` is valid in ESM entry points.
-
-#### Biome style
-
-| Rule | Value |
-|---|---|
-| Indent | 4 spaces |
-| Line width | 120 |
-| Quotes | Double (`"`) |
-| Semicolons | Always |
-| Trailing commas | All |
-| Arrow parens | Omit for single param (`x => x`) |
+- Biome style: 4-space indent, 120 columns, double quotes, semicolons always, trailing commas all, omit arrow parens for a single param
 
 ---
 
@@ -206,75 +161,41 @@ When targeting the workspace root, write the files directly into the current wor
 
 Scripts:
 
-| Script | Command | Condition |
-|---|---|---|
-| `start` | `node --experimental-strip-types src/index.ts` | always |
-| `dev` | `node --watch --experimental-strip-types --env-file=.env src/index.ts` | always |
-| `typecheck` | `tsc --noEmit` | always |
-| `test` | `node --test --experimental-strip-types "src/**/*.test.ts"` | always |
-| `lint` | `biome lint ./src` | always |
-| `format` | `biome format --write ./src` | always |
-| `check` | `biome check ./src` | always |
-| `check:fix` | `biome check --write ./src` | always |
-| `migrate` | `node --experimental-strip-types src/migrate.ts up` | `withMigrations` |
-| `migrate:down` | `node --experimental-strip-types src/migrate.ts down` | `withMigrations` |
-| `migrate:pending` | `node --experimental-strip-types src/migrate.ts pending` | `withMigrations` |
+- Always: `start=node --experimental-strip-types src/index.ts`, `dev=node --watch --experimental-strip-types --env-file=.env src/index.ts`, `typecheck=tsc --noEmit`, `test=node --test --experimental-strip-types "src/**/*.test.ts"`, `lint=biome lint ./src`, `format=biome format --write ./src`, `check=biome check ./src`, `check:fix=biome check --write ./src`
+- With migrations: `migrate=node --experimental-strip-types src/migrate.ts up`, `migrate:down=node --experimental-strip-types src/migrate.ts down`, `migrate:pending=node --experimental-strip-types src/migrate.ts pending`
 
 Dependencies:
 
-| Package | Type | Condition |
-|---|---|---|
-| `pino` | dependency | always |
-| `zod` | dependency | always |
-| `zod-config` | dependency | always |
-| `fastify` | dependency | `withHttp` |
-| `@fastify/sensible` | dependency | `withHttp` |
-| `@fastify/swagger` | dependency | `withOpenApi` |
-| `@fastify/swagger-ui` | dependency | `withOpenApi` |
-| `prom-client` | dependency | `withMetrics` |
-| `sequelize` | dependency | `withDb` |
-| `pg` | dependency | `withDb` |
-| `pg-hstore` | dependency | `withDb` |
-| `umzug` | dependency | `withMigrations` |
-| `typescript` (`"latest"`) | devDependency | always |
-| `@types/node` (`"latest"`) | devDependency | always |
-| `@biomejs/biome` | devDependency | always |
-| `pino-pretty` | dependency | always |
-| `@types/pg` | devDependency | `withDb` |
+- Always deps: `pino`, `pino-pretty`, `zod`, `zod-config`
+- Always devDeps: `typescript@latest`, `@types/node@latest`, `@biomejs/biome`
+- `withHttp`: `fastify`, `@fastify/sensible`
+- `withOpenApi`: `@fastify/swagger`, `@fastify/swagger-ui`
+- `withMetrics`: `prom-client`
+- `withDb`: `sequelize`, `pg`, `pg-hstore`, devDep `@types/pg`
+- `withMigrations`: `umzug`
 
 > `tsx` and `ts-node` are **not** included. Node 24 covers the full dev and test workflow natively.
 
 ---
 
-### `tsconfig.json`
+### Direct copies from assets
 
-Copy verbatim from `assets/tsconfig.json`.
-
-### `biome.jsonc`
-
-Copy verbatim from `assets/biome.jsonc`.
-
-### `.vscode/settings.json`
-
-Copy verbatim from `assets/vscode/settings.json`.
-
-### `.vscode/extensions.json`
-
-Copy verbatim from `assets/vscode/extensions.json`.
+- `tsconfig.json` from `assets/tsconfig.json`
+- `biome.jsonc` from `assets/biome.jsonc`
+- `.vscode/settings.json` from `assets/vscode/settings.json`
+- `.vscode/extensions.json` from `assets/vscode/extensions.json`
+- `.gitignore` from `assets/gitignore`
+- `src/logger.ts` from `assets/src/logger.ts`
 
 ### `config.yaml.example`
 
-Copy from `assets/config.yaml.example`. Omit the `port` field when `withHttp=no`. Omit the `openapi` block when `withOpenApi=no`.
+Copy `assets/config.yaml.example`. Omit `port` when `withHttp=no`. Omit the `openapi` block when `withOpenApi=no`.
 
 > Committed to source control. Contains non-secret base configuration only. Copy to `config.yaml` and adjust per environment.
 
 ### `.env.example`
 
 Copy from `assets/env.example`. Replace `<PROJECT_NAME>` using the same SCREAMING_SNAKE_CASE rule as `src/config.ts`. Omit the `<PROJECT_NAME>_DB_URL` line when `withDb=no`.
-
-### `.gitignore`
-
-Copy verbatim from `assets/gitignore`.
 
 ### `src/config.ts`
 
@@ -286,10 +207,6 @@ Read `assets/src/config.ts` as template, then adapt:
 - The `log` nested object is always present; include it as-is.
 - Add `openapi` nested object when `withOpenApi=yes` (see `references/openapi.md` for exact field definitions).
 - Keep all imports and `import.meta.url` path resolution exactly as shown in the asset — required for `yamlAdapter` to locate `config.yaml` reliably.
-
-### `src/logger.ts`
-
-Copy verbatim from `assets/src/logger.ts`.
 
 ### Server-side modules
 
@@ -304,9 +221,7 @@ When `withMigrations=yes`, also read `references/migrations.md` for `src/migrate
 
 When `withOpenApi=yes`, also read `references/openapi.md` for config additions, `src/server.ts` plugin registration, and route schema annotations.
 
-### Endpoint layer
-
-Read `references/endpoints.md` for all files under `src/endpoints/`.
+Read `references/endpoints.md` for all `src/endpoints/**` files.
 
 ### `.devcontainer/devcontainer.json` *(withDevContainer)*
 
