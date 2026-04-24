@@ -17,7 +17,7 @@ const schema = z.object({
         type: z.enum(["json", "pretty"]).default("pretty"),
     }).default({ level: "info", type: "pretty" }),
     port: z.coerce.number().int().min(1).max(65535).default(3000),
-    dbUrl: z.string().url("DB_URL must be a valid connection URL"),
+    dbUrl: z.url("DB_URL must be a valid connection URL"),
 });
 
 export type Config = z.infer<typeof schema>;
