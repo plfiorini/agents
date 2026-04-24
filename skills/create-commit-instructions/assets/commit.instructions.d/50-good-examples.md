@@ -1,0 +1,5 @@
+---
+
+## GOOD EXAMPLES
+
+[[ADAPT_GOOD_EXAMPLES]]

@@ -1,0 +1,5 @@
+---
+
+## SCOPE GUIDANCE
+
+[[ADAPT_SCOPE_GUIDANCE]]

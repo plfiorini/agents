@@ -1,0 +1,7 @@
+interface:
+  display_name: "Create Commit Instructions"
+  short_description: "Generate repository-specific commit guidance"
+  default_prompt: "Use $create-commit-instructions to create commit instructions for this workspace."
+
+policy:
+  allow_implicit_invocation: true
