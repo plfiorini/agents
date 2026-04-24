@@ -6,12 +6,13 @@ Signal a breaking change in **at least one** of the following ways (both may be 
 
 1. Append `!` immediately after the type/scope on the subject line:
 
-   ```
+   ```text
    feat(api)!: rename response fields
    ```
 
 2. Include a `BREAKING CHANGE:` footer that describes what broke and how to migrate:
-   ```
+
+   ```text
    BREAKING CHANGE: clients must read the new response field names.
    ```
 

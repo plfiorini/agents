@@ -19,7 +19,7 @@ A commit message consists of up to three parts, in order:
 
 ### Subject Line Format
 
-```
+```text
 <type>[(scope)][!]: <description>
 ```
 
