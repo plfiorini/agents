@@ -37,16 +37,16 @@ Export a named async Fastify plugin from each route file:
   `503` when `status === "degraded"`.
 
 ### `health.route.ts`
-- `GET /health/live` → `handleLive`
-- `GET /health/ready` → `handleReady`
+- `GET /-/health/live` → `handleLive`
+- `GET /-/health/ready` → `handleReady`
 
 ### `health.test.ts`
 - `getLiveness()` returns `{ status: "ok" }`.
 - `getReadiness()` returns `{ status: "ok" }` when `checkDatabase` resolves `true`.
 - `getReadiness()` returns `{ status: "degraded" }` when `checkDatabase` resolves `false`.
 
-> **Liveness vs. Readiness:** `/health/live` must never return 503 due to a downstream failure —
-> a failing liveness probe causes Kubernetes to *restart* the pod. `/health/ready` checks
+> **Liveness vs. Readiness:** `/-/health/live` must never return 503 due to a downstream failure —
+> a failing liveness probe causes Kubernetes to *restart* the pod. `/-/health/ready` checks
 > dependencies; a 503 removes the pod from the load balancer without restarting it.
 
 ---

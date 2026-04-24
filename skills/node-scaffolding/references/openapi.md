@@ -78,12 +78,12 @@ app.get("/path", {
 }, handler);
 ```
 
-### `/health/live`
+### `/-/health/live`
 
 - `tags: ["health"]`, `summary: "Kubernetes liveness probe"`
 - 200: `{ status: { type: "string", enum: ["ok"] }, ts: { type: "string", format: "date-time" } }`, required: `["status", "ts"]`
 
-### `/health/ready`
+### `/-/health/ready`
 
 - `tags: ["health"]`, `summary: "Kubernetes readiness probe"`
 - 200: `{ status: { enum: ["ok"] }, checks: { type: "object", additionalProperties: { type: "string", enum: ["ok", "error"] } } }`, required: `["status", "checks"]`
