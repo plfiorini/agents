@@ -1,9 +1,9 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadConfig } from "zod-config";
-import { envAdapter } from "zod-config/adapters/env";
-import { yamlAdapter } from "zod-config/adapters/yaml";
 import { z } from "zod";
+import { loadConfig } from "zod-config";
+import { envAdapter } from "zod-config/env-adapter";
+import { yamlAdapter } from "zod-config/yaml-adapter";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
