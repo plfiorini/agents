@@ -9,7 +9,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Omit fields that are not relevant to the enabled options:
 //   port   — only when withHttp=yes
-//   dbUrl  — only when withDb=yes
+//   database — only when withDb=yes
+//   database.useEntraId — only when withEntraId=yes
 const schema = z.object({
     env: z.enum(["development", "production", "test"]).default("development"),
     log: z.object({
@@ -17,7 +18,12 @@ const schema = z.object({
         type: z.enum(["json", "pretty"]).default("pretty"),
     }).default({ level: "info", type: "pretty" }),
     port: z.coerce.number().int().min(1).max(65535).default(3000),
-    dbUrl: z.url("DB_URL must be a valid connection URL"),
+    database: z.object({
+        url: z.url("DATABASE__URL must be a valid connection URL"),
+        dialect: z.enum(["postgres", "mariadb"]).default("postgres"),
+        dialectOptions: z.record(z.string(), z.unknown()).default({}),
+        useEntraId: z.boolean().default(true),
+    }),
 });
 
 export type Config = z.infer<typeof schema>;

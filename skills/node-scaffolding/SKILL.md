@@ -6,7 +6,7 @@ description: >
   whenever the user wants to create a new Node.js app, set up a TypeScript
   service, bootstrap an API, start a microservice, or initialize a backend
   project — even if they don't say "scaffold" explicitly.
-argument-hint: "[project-name] [--workspace-root|--path <target-path>] [--http] [--metrics] [--db] [--migrations] [--docker] [--openapi] [--devcontainer]"
+argument-hint: "[project-name] [--workspace-root|--path <target-path>] [--http] [--metrics] [--db] [--entra-id] [--migrations] [--docker] [--openapi] [--devcontainer]"
 metadata:
   author: Pier Luigi Fiorini
   license: MIT
@@ -44,6 +44,13 @@ inputs:
     default: "no"
   - id: withDb
     description: "Add a Sequelize + Postgres database module?"
+    type: pickString
+    options:
+      - "yes"
+      - "no"
+    default: "no"
+  - id: withEntraId
+    description: "Use Azure Entra ID authentication for Azure Database for PostgreSQL? (requires withDb)"
     type: pickString
     options:
       - "yes"
@@ -88,7 +95,7 @@ Inputs:
 - `projectName`: `package.json` name; also the leaf directory name when the user supplies only a parent path
 - `projectLocation`: `workspace-root` or `custom-path`
 - `targetPath`: required only for `custom-path`; may be either the final project directory or a parent directory
-- `withHttp`, `withMetrics`, `withDb`, `withMigrations`, `withDocker`, `withOpenApi`, `withDevContainer`: feature flags
+- `withHttp`, `withMetrics`, `withDb`, `withEntraId`, `withMigrations`, `withDocker`, `withOpenApi`, `withDevContainer`: feature flags
 
 If the user's message already contains all parameters, infer the values and skip already-answered inputs.
 
@@ -105,6 +112,7 @@ Infer location from the user's wording:
 - `withMetrics=yes` and `withHttp=no` → treat `withHttp` as `"yes"` and inform the user.
 - `withOpenApi=yes` and `withHttp=no` → treat `withHttp` as `"yes"` and inform the user.
 - `withMigrations=yes` and `withDb=no` → treat `withDb` as `"yes"` and inform the user.
+- `withEntraId=yes` and `withDb=no` → treat `withDb` as `"yes"` and inform the user.
 
 ---
 
@@ -172,6 +180,7 @@ Dependencies:
 - `withOpenApi`: `@fastify/swagger`, `@fastify/swagger-ui`
 - `withMetrics`: `prom-client`
 - `withDb`: `sequelize`, `pg`, `pg-hstore`, devDep `@types/pg`
+- `withDb=yes` and `withEntraId=yes`: `@azure/identity`
 - `withMigrations`: `umzug`
 
 > `tsx` and `ts-node` are **not** included. Node 24 covers the full dev and test workflow natively.
@@ -195,7 +204,7 @@ Copy `assets/config.yaml.example`. Omit `port` when `withHttp=no`. Omit the `ope
 
 ### `.env.example`
 
-Copy from `assets/env.example`. Replace `<PROJECT_NAME>` using the same SCREAMING_SNAKE_CASE rule as `src/config.ts`. Omit the `<PROJECT_NAME>_DB_URL` line when `withDb=no`.
+Copy from `assets/env.example`. Replace `<PROJECT_NAME>` using the same SCREAMING_SNAKE_CASE rule as `src/config.ts`. Omit the `<PROJECT_NAME>_DATABASE__URL` line when `withDb=no`.
 
 ### `src/config.ts`
 
@@ -203,7 +212,9 @@ Read `assets/src/config.ts` as template, then adapt:
 
 - Replace every literal `<PROJECT_NAME>` with the SCREAMING_SNAKE_CASE form of `projectName`: replace each `-` with `_` then uppercase (e.g. `foo-bar` → `FOO_BAR`, `foobar` → `FOOBAR`).
 - Omit `port` field when `withHttp=no`.
-- Omit `dbUrl` field when `withDb=no`.
+- Omit `database` nested object when `withDb=no`.
+- Keep `database.dialectOptions` as a generic object for custom Sequelize dialect options.
+- Add `database.useEntraId` as a boolean with default `true` when `withEntraId=yes`; omit it when `withEntraId=no`.
 - The `log` nested object is always present; include it as-is.
 - Add `openapi` nested object when `withOpenApi=yes` (see `references/openapi.md` for exact field definitions).
 - Keep all imports and `import.meta.url` path resolution exactly as shown in the asset — required for `yamlAdapter` to locate `config.yaml` reliably.
@@ -220,6 +231,8 @@ Read `references/server.md` for:
 When `withMigrations=yes`, also read `references/migrations.md` for `src/migrate.ts` and example migration files.
 
 When `withOpenApi=yes`, also read `references/openapi.md` for config additions, `src/server.ts` plugin registration, and route schema annotations.
+
+When `withEntraId=yes`, also read `references/entra-id.md` for Azure Entra ID PostgreSQL authentication snippets.
 
 Read `references/endpoints.md` for all `src/endpoints/**` files.
 

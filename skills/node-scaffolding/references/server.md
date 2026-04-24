@@ -2,7 +2,8 @@
 
 ## `src/database.ts` *(withDb only)*
 
-- Export a `sequelize` instance: `new Sequelize(config.dbUrl, { dialect: "postgres", logging: msg => logger.debug(msg), pool: { max: 10, min: 2, acquire: 30_000, idle: 10_000 } })`.
+- Export a `sequelize` instance: `new Sequelize(config.database.url, { dialect: config.database.dialect, dialectOptions: config.database.dialectOptions, logging: msg => logger.debug(msg), pool: { max: 10, min: 2, acquire: 30_000, idle: 10_000 }, retry: { max: 5 } })`.
+- When `withEntraId=yes`, read `references/entra-id.md` and apply the `src/database.ts` additions there.
 - Export `connectDatabase(): Promise<void>` — calls `sequelize.authenticate()`, logs on success.
 - Export `closeDatabase(): Promise<void>` — calls `sequelize.close()`, logs on success.
 
