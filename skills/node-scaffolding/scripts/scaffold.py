@@ -29,6 +29,7 @@ class Options:
     with_devcontainer: bool = False
     force: bool = False
     dry_run: bool = False
+    emit_files_json: bool = False
     notes: list[str] = field(default_factory=list)
 
 
@@ -80,6 +81,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--all", action="store_true", help="enable every optional feature")
     parser.add_argument("--force", action="store_true", help="allow writing into a non-empty target directory")
     parser.add_argument("--dry-run", action="store_true", help="print planned files without writing them")
+    parser.add_argument(
+        "--emit-files-json",
+        action="store_true",
+        help="print generated files as JSON without writing them; intended for VS Code/Copilot file edit tools",
+    )
     return parser
 
 
@@ -129,6 +135,7 @@ def resolve_options(args: argparse.Namespace) -> Options:
         with_devcontainer=with_devcontainer,
         force=args.force,
         dry_run=args.dry_run,
+        emit_files_json=args.emit_files_json,
         notes=notes,
     )
 
@@ -156,6 +163,10 @@ def scaffold(options: Options) -> None:
     files = render_files(options)
     target = options.target_root
 
+    if options.emit_files_json:
+        print_files_json(options, files)
+        return
+
     if options.dry_run:
         print_plan(options, files)
         return
@@ -180,6 +191,23 @@ def print_plan(options: Options, files: dict[str, str]) -> None:
     print("Files:")
     for relative_path in sorted(files):
         print(f"  {relative_path}")
+
+
+def print_files_json(options: Options, files: dict[str, str]) -> None:
+    payload = {
+        "targetRoot": str(options.target_root),
+        "notes": options.notes,
+        "files": [
+            {
+                "path": str(options.target_root / relative_path),
+                "relativePath": relative_path,
+                "content": content,
+            }
+            for relative_path, content in sorted(files.items())
+        ],
+        "postGenerationMessage": build_post_generation_message(options),
+    }
+    print(json.dumps(payload, indent=2))
 
 
 def render_files(options: Options) -> dict[str, str]:
@@ -907,42 +935,69 @@ def render_devcontainer(options: Options) -> str:
 
 
 def print_post_generation_message(options: Options) -> None:
-    print(f"Project {options.project_name} scaffolded.")
-    print(f"Output path: {options.target_root}")
-    print()
-    print("Next steps:")
+    print(build_post_generation_message(options))
+
+
+def build_post_generation_message(options: Options) -> str:
+    lines = [
+        f"Project {options.project_name} scaffolded.",
+        f"Output path: {options.target_root}",
+        "",
+        "Next steps:",
+    ]
     if options.target_root != Path.cwd().resolve():
-        print(f"  cd {options.target_root}")
-    print("  cp config.yaml.example config.yaml   # Tune base config")
-    print("  cp .env.example .env                 # Add secrets")
-    print("  npm install")
-    print("  npm update --save                    # Resolve dependencies versions")
-    print("  npm run dev                          # Node 24 runs TypeScript directly")
+        lines.append(f"  cd {options.target_root}")
+    lines.extend(
+        [
+            "  cp config.yaml.example config.yaml   # Tune base config",
+            "  cp .env.example .env                 # Add secrets",
+            "  npm install",
+            "  npm update --save                    # Resolve dependencies versions",
+            "  npm run dev                          # Node 24 runs TypeScript directly",
+        ]
+    )
     if options.with_http:
-        print()
-        print("Endpoints:")
-        print("  GET /-/health/live                   Kubernetes liveness probe")
-        print("  GET /-/health/ready                  Kubernetes readiness probe")
+        lines.extend(
+            [
+                "",
+                "Endpoints:",
+                "  GET /-/health/live                   Kubernetes liveness probe",
+                "  GET /-/health/ready                  Kubernetes readiness probe",
+            ]
+        )
         if options.with_metrics:
-            print("  GET /-/metrics                       Prometheus scrape endpoint")
+            lines.append("  GET /-/metrics                       Prometheus scrape endpoint")
         if options.with_openapi:
-            print("  GET /documentation                   Swagger UI")
+            lines.append("  GET /documentation                   Swagger UI")
     if options.with_migrations:
-        print()
-        print("Migrations:")
-        print("  npm run migrate                      Apply all pending migrations")
-        print("  npm run migrate:down                 Revert last migration")
-        print("  npm run migrate:pending              List unapplied migrations")
-    print()
-    print("Useful scripts:")
-    print("  npm test                             Run tests with Node 24 type-stripping")
-    print("  npm run check                        Biome lint + format")
-    print("  npm run typecheck                    Type-check without running")
+        lines.extend(
+            [
+                "",
+                "Migrations:",
+                "  npm run migrate                      Apply all pending migrations",
+                "  npm run migrate:down                 Revert last migration",
+                "  npm run migrate:pending              List unapplied migrations",
+            ]
+        )
+    lines.extend(
+        [
+            "",
+            "Useful scripts:",
+            "  npm test                             Run tests with Node 24 type-stripping",
+            "  npm run check                        Biome lint + format",
+            "  npm run typecheck                    Type-check without running",
+        ]
+    )
     if options.with_docker:
-        print()
-        print("Docker:")
-        print(f"  docker build -t {options.project_name} .")
-        print(f"  docker run --rm --env-file .env -p 3000:3000 {options.project_name}")
+        lines.extend(
+            [
+                "",
+                "Docker:",
+                f"  docker build -t {options.project_name} .",
+                f"  docker run --rm --env-file .env -p 3000:3000 {options.project_name}",
+            ]
+        )
+    return "\n".join(lines)
 
 
 if __name__ == "__main__":

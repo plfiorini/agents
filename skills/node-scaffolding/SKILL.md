@@ -94,6 +94,17 @@ Run the bundled scaffolder from this skill directory:
 python3 scripts/scaffold.py [project-name] [--workspace-root|--path <target-path>] [--http] [--metrics] [--db] [--entra-id] [--migrations] [--docker] [--openapi] [--devcontainer]
 ```
 
+When this skill is running inside VS Code/Copilot, make the generated project visible as Copilot file changes:
+
+1. Run the scaffolder with `--emit-files-json` and the same arguments you would otherwise pass.
+2. Parse the JSON response.
+3. Create or update every file from `files[].path` using the Copilot/agent file-edit tool, with the exact `files[].content`.
+4. Show `postGenerationMessage` after the file edits are applied.
+
+Do not run the scaffolder in direct write mode from VS Code/Copilot unless the user explicitly asks for that. Direct script writes bypass Copilot's file-change UI, so the user will not get the normal Keep/Undo review affordance.
+
+Outside VS Code/Copilot, run the scaffolder normally without `--emit-files-json`.
+
 Map inputs to arguments:
 
 - `projectName` -> `[project-name]`
