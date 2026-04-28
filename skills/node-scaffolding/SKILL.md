@@ -169,7 +169,7 @@ Conditional files:
 
 Scripts:
 
-- Always: `start=node --experimental-strip-types src/index.ts`, `dev=node --experimental-strip-types --env-file-if-exists=.env --watch src/index.ts`, `typecheck=tsc --noEmit`, `test=node --test --experimental-strip-types "src/**/*.test.ts"`, `lint=biome lint ./src`, `format=biome format --write ./src`, `check=biome check ./src`, `check:fix=biome check --write ./src`
+- Always: `start=node --experimental-strip-types --env-file-if-exists=.env src/index.ts`, `dev=node --experimental-strip-types --env-file-if-exists=.env --watch src/index.ts`, `typecheck=tsc --noEmit`, `test=node --test --experimental-strip-types "src/**/*.test.ts"`, `lint=biome lint ./src`, `format=biome format --write ./src`, `check=biome check ./src`, `check:fix=biome check --write ./src`
 - With migrations: `migrate=node --experimental-strip-types src/migrate.ts up`, `migrate:down=node --experimental-strip-types src/migrate.ts down`, `migrate:pending=node --experimental-strip-types src/migrate.ts pending`
 
 Dependencies:
