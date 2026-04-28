@@ -2,13 +2,24 @@
     "editor.formatOnSave": true,
     "editor.formatOnType": true,
     "editor.formatOnPaste": true,
+    "editor.codeActionsOnSave": {
+        "source.organizeImports.biome": "explicit"
+    },
+    "files.exclude": {
+        "**/.git": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true,
+        "**/node_modules": true
+    },
+    "files.watcherExclude": {
+        "**/.git/objects/**": true,
+        "**/.git/subtree-cache/**": true,
+        "**/node_modules/*/**": true
+    },
     "[jsonc]": {
         "editor.defaultFormatter": "biomejs.biome"
     },
     "[typescript]": {
         "editor.defaultFormatter": "biomejs.biome"
-    },
-    "editor.codeActionsOnSave": {
-        "source.organizeImports.biome": "explicit"
     }
 }
