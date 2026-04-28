@@ -214,6 +214,7 @@ Read `assets/src/config.ts` as template, then adapt:
 - Omit `port` field when `withHttp=no`.
 - Omit `database` nested object when `withDb=no`.
 - Keep `database.dialectOptions` as a generic object for custom Sequelize dialect options.
+- Keep `database.retry` and `database.pool` when `withDb=yes`; these configure Sequelize retry and connection pool settings with the defaults shown in the asset.
 - Add `database.useEntraId` as a boolean with default `true` when `withEntraId=yes`; omit it when `withEntraId=no`.
 - The `log` nested object is always present; include it as-is.
 - Add `openapi` nested object when `withOpenApi=yes` (see `references/openapi.md` for exact field definitions).

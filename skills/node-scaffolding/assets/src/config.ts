@@ -22,6 +22,20 @@ const schema = z.object({
         url: z.url("DATABASE__URL must be a valid connection URL"),
         dialect: z.enum(["postgres", "mariadb"]).default("postgres"),
         dialectOptions: z.record(z.string(), z.unknown()).default({}),
+        retry: z
+            .object({
+                max: z.coerce.number().int().min(0).default(5),
+                timeout: z.coerce.number().int().min(0).default(10_000),
+            })
+            .default({ max: 5, timeout: 10_000 }),
+        pool: z
+            .object({
+                min: z.coerce.number().int().min(0).default(2),
+                max: z.coerce.number().int().min(1).default(10),
+                acquire: z.coerce.number().int().min(0).default(30_000),
+                idle: z.coerce.number().int().min(0).default(10_000),
+            })
+            .default({ max: 10, min: 2, acquire: 30_000, idle: 10_000 }),
         useEntraId: z.boolean().default(true),
     }),
 });
