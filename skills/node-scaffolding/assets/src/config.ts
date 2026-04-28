@@ -58,7 +58,8 @@ export const config: Config = await loadConfig({
             regex: /^<PROJECT_NAME>_/,
             transform: ({ key, value }) => ({
                 key: key.replace(/^<PROJECT_NAME>_/, ""),
-                value,
+                // Coerce boolean-like strings so z.boolean() works without z.coerce on every field.
+                value: value === "true" || value === "1" ? true : value === "false" || value === "0" ? false : value,
             }),
             nestingSeparator: "__",
         }),
