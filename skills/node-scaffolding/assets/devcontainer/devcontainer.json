@@ -2,7 +2,7 @@
     "image": "mcr.microsoft.com/devcontainers/base:debian",
     "features": {
         "ghcr.io/devcontainers/features/git:1": {},
-        "ghcr.io/devcontainers/features/node:1": {
+        "ghcr.io/devcontainers/features/node:2": {
             "version": "24.12.0"
         }
     },
@@ -17,8 +17,11 @@
             ]
         }
     },
-    "postCreateCommand": "npm install",
     "remoteEnv": {
         "NODE_ENV": "development"
+    },
+    "forwardPorts": [3000],
+    "portsAttributes": {
+        "3000": { "label": "HTTP Server", "onAutoForward": "notify" }
     }
 }
