@@ -37,8 +37,8 @@ Export a named async Fastify plugin from each route file:
   `503` when `status === "degraded"`.
 
 ### `health.route.ts`
-- `GET /-/health/live` → `handleLive`
-- `GET /-/health/ready` → `handleReady`
+- `GET /health/live` → `handleLive` (public path: `/-/health/live` via server prefix)
+- `GET /health/ready` → `handleReady` (public path: `/-/health/ready` via server prefix)
 
 ### `health.test.ts`
 - `getLiveness()` returns `{ status: "ok" }`.
@@ -61,7 +61,7 @@ Export `scrape(): Promise<{ body: string; contentType: string }>` — calls `get
 Export `handleMetrics(req, reply)` — calls `scrape()`, sets `Content-Type` header, sends `200`.
 
 ### `metrics.route.ts`
-`GET /metrics` → `handleMetrics`.
+`GET /metrics` → `handleMetrics` (public path: `/-/metrics` via server prefix).
 
 ### `metrics.test.ts`
 Test that `scrape()` returns a non-empty string body and a non-empty `contentType`.

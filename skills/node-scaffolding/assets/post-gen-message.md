@@ -10,7 +10,7 @@ Next steps:
 Endpoints:                             (withHttp only)
   GET /-/health/live                   Kubernetes liveness probe
   GET /-/health/ready                  Kubernetes readiness probe
-  GET /metrics                         Prometheus scrape endpoint (withMetrics only)
+  GET /-/metrics                       Prometheus scrape endpoint (withMetrics only)
   GET /documentation                   Swagger UI (withOpenApi only)
 
 Migrations:                            (withMigrations only)

@@ -52,7 +52,7 @@
     `reply.code(503).send({ error: "Service shutting down" })` and return.
   - *(withMetrics)* `onResponse` hook: record `reply.elapsedTime / 1000` into
     `httpRequestDuration` using the request's method, route url, and status code as label values.
-  - Register `healthRoutes` and *(withMetrics)* `metricsRoutes`.
+  - Register `healthRoutes` with `{ prefix: "/-" }` and *(withMetrics)* `metricsRoutes` with `{ prefix: "/-" }`.
 - Export `startServer(): Promise<void>`:
   - *(withDb)* Call `connectDatabase()` first.
   - `buildServer()` → `app.listen({ port: config.port, host: "0.0.0.0" })`.

@@ -89,7 +89,7 @@ app.get("/path", {
 - 200: `{ status: { enum: ["ok"] }, checks: { type: "object", additionalProperties: { type: "string", enum: ["ok", "error"] } } }`, required: `["status", "checks"]`
 - 503: same shape but `status: { enum: ["degraded"] }`
 
-### `/metrics` *(withMetrics + withOpenApi)*
+### `/-/metrics` *(withMetrics + withOpenApi)*
 
 - `tags: ["observability"]`, `summary: "Prometheus scrape endpoint"`
 - 200: `{ type: "string", description: "Prometheus metrics in text/plain exposition format" }`
