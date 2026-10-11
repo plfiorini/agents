@@ -8,7 +8,7 @@ The installed Matt Pocock `code-review` skill is mandatory: ask it to **review t
 
 ## Review remediation
 
-After review, spawn one dedicated fresh-context agent to resolve actionable findings and justify dismissals, updating tests/docs as needed. Request the latest available Sonnet in Claude Code or Sol in Codex at **High effort** using [agent-contracts.md](agent-contracts.md#dynamic-resolution-at-agent-creation). Apply its disclosed fallback/default policy when configuration is unsupported. Complete this phase before running any checks.
+After review, spawn one dedicated fresh-context agent to resolve actionable findings and justify dismissals, updating tests/docs as needed. When the finding queue is large, use one agent per group of findings with disjoint file ownership, within the concurrency cap. Request the latest available Sonnet in Claude Code or Sol in Codex at **High effort** using [agent-contracts.md](agent-contracts.md#dynamic-resolution-at-agent-creation). Apply its disclosed fallback/default policy when configuration is unsupported. Complete this phase before running any checks.
 
 ## Deferred test order
 

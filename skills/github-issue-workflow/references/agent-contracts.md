@@ -8,6 +8,7 @@ Use this reference when spawning agents. Start each **new** agent in a clean con
 - Fixed baseline SHA and noteworthy pre-existing user changes.
 - Relevant repository conventions and paths (not full file contents).
 - Assigned deliverable and owned files/interfaces; dependency assumptions.
+- For shards: shard id, role, owned paths, acceptance criteria covered, contract reference (interface skeleton or brief), and the exploration limit "read only owned files plus their direct dependencies and the contract".
 - Explicit constraint: **do not run tests, builds, lint, or static analysis** during implementation, review, or review remediation.
 - Return changed paths, key decisions, known risks, and status, normally within 200–400 words.
 
@@ -42,7 +43,7 @@ Requested reasoning effort, where supported:
 | Standard | High | Medium | Low |
 | Complex | High | High | Medium |
 
-Review-remediation and test-remediation agents **always request High effort**, independently of complexity. Complexity affects only model configuration and effort; it never changes the required three implementation agents or their responsibilities and coverage.
+Review-remediation and test-remediation agents **always request High effort**, independently of complexity. Model family and effort apply identically to every shard of a role. Complexity affects model configuration, effort and the permitted shard count; it never removes a role or reduces responsibilities and coverage.
 
 ### Dynamic resolution at agent creation
 
@@ -58,7 +59,7 @@ Apply this procedure to every implementation and remediation launch. For the rev
 
 Use existing runtime mechanisms only; add no lookup scripts, dependencies, or custom configuration files. Resolve at each new creation, reusing catalog information while still current. When reusing an existing agent, retain and report its actual configuration rather than claiming a new selection. Explicit user configuration takes precedence; report any departure from these preferences. Runtime configuration constrains what is available and configurable.
 
-## Three parallel implementation agents
+## Three implementation roles, run as shards
 
 ### Responsibilities
 
@@ -68,7 +69,23 @@ Use existing runtime mechanisms only; add no lookup scripts, dependencies, or cu
 
 **Documentation:** Update pertinent user/developer docs and examples. Confirm descriptions match the intended public behavior; do not modify production code or tests.
 
-All three are launched concurrently. Prefer distinct file ownership. When overlap is unavoidable, the orchestrator resolves it after all three finish.
+Every issue has all three roles. Each role runs as one agent by default and as several shards when the plan's footprint estimate exceeds the per-agent budget. Prefer distinct file ownership. When overlap is unavoidable, the orchestrator resolves it after all shards finish.
+
+### Sharding and work units
+
+During Plan Mode, split the work into **work units** only when the estimate exceeds the budget; otherwise use one agent per role. Each unit records: id, owned files/modules (disjoint from other units), acceptance criteria covered, contract subset, dependencies on other units, and estimated footprint.
+
+- **Budget:** about **200k tokens** per implementation agent. Agents cannot measure tokens exactly, so estimate from proxies: files to modify, approximate LOC to read and write, existing code and tests to read, and fixtures to learn. Split when the estimate exceeds the budget; prefer splitting along module, package or layer boundaries, never by arbitrary file counts.
+- **Shard counts:** Simple 1 Code / 1 Tests / 1 Docs. Standard up to 3 Code and 3 Tests shards. Complex up to 6 Code and 6 Tests shards. Documentation stays at 1 agent unless its own estimate exceeds the budget. Use the fewest shards that fit the budget.
+- **Pairing:** each Code shard is paired with a Tests shard covering the same acceptance criteria. Tests shards derive expectations from the issue and the contract, not from Code shard output.
+- **Concurrency:** at most **6 implementation agents run concurrently**. Queue the remaining shards in waves ordered by unit dependencies, and launch each wave concurrently. If the runtime allows fewer concurrent agents, use the lower limit and disclose it.
+- **Test harness brief:** the planner extracts test conventions, fixtures and helpers once and passes them to every Tests shard, so each does not rediscover the harness.
+- **Spill rule:** an agent approaching its budget stops at a clean boundary and returns a remaining-work handoff (done, not done, touched paths, open decisions). The orchestrator starts a fresh continuation agent with that compact handoff for the same role and owned paths rather than letting the context grow.
+- **Integration:** after all waves finish, the orchestrator merges the concise shard reports and checks for ownership overlaps and contract drift before review. Resolve conflicts with the owning shard rather than a new generic agent.
+
+### Phase B0: interface skeleton
+
+When the plan shards Code or Tests, run B0 before fan-out: one short Code agent, or the planner in execution, creates the public signatures, types and file layout (stubs only, no behavior) that all shards share. Record it as the contract reference in every handoff. Treat it as frozen; shards report needed contract changes to the orchestrator instead of editing the skeleton. Skip B0 when no role is sharded. B0 does not run checks.
 
 ## Review agent
 
@@ -76,7 +93,7 @@ Explicitly invoke Matt Pocock's installed `code-review` skill using the phrase: 
 
 ## Review-fix agent
 
-One agent with a fresh context, actual review findings, relevant source paths, and the latest available Sonnet/Sol preference at High effort under the shared resolution policy. Validate each finding conceptually, fix valid ones, update affected tests/docs, and justify any dismissal. Do not run checks.
+One agent with a fresh context, actual review findings, relevant source paths, and the latest available Sonnet/Sol preference at High effort under the shared resolution policy. Validate each finding conceptually, fix valid ones, update affected tests/docs, and justify any dismissal. Do not run checks. When the finding queue is large, split it into groups with disjoint file ownership and use one such agent per group, within the concurrency cap.
 
 ## Test-fix agent
 

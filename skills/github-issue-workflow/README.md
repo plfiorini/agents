@@ -1,12 +1,12 @@
 # GitHub Issue Workflow
 
-A reusable agent skill to implement **any GitHub issue** with strict parallel implementation, independent standards/spec review, high-effort remediation, deferred validation, and a final Conventional Commit.
+A reusable agent skill to implement **any GitHub issue** with strict parallel implementation roles (sharded for large issues), independent standards/spec review, high-effort remediation, deferred validation, and a final Conventional Commit.
 
 ## How it works
 
-The **main session starts in Plan Mode**. It reads the issue, maps requirements to the repository, identifies a fixed Git baseline, notes any unrelated working-tree edits, and presents a plan. **No edits or tests happen in Plan Mode.** Once the plan is approved and execution begins, the orchestrator launches exactly **three parallel, clean-context agents**: one for production code, one for automated tests (written but not run), and one for documentation.
+The **main session starts in Plan Mode**. It reads the issue, maps requirements to the repository, identifies a fixed Git baseline, notes any unrelated working-tree edits, and presents a plan. **No edits or tests happen in Plan Mode.** Once the plan is approved and execution begins, the orchestrator launches **three parallel implementation roles** with clean contexts: production code, automated tests (written but not run), and documentation. By default each role is one agent. When the plan estimates that a role would exceed about **200k tokens**, it is split into **shards** with disjoint file ownership; Code and Tests shards are paired, an optional **interface skeleton (B0)** freezes the shared contract first, and at most **6 agents** run concurrently, with extra shards queued in waves. An agent nearing its budget hands off to a fresh continuation agent.
 
-When all three finish, a review agent invokes **Matt Pocock's installed `code-review` skill**, reviewing the changes **since the baseline** on two axes: **Standards** (documented repository standards) and **Spec** (the originating issue). The review skill's own parallel subagents examine those axes and report them side by side. One high-effort agent addresses actionable findings.
+When all implementation agents finish, a review agent invokes **Matt Pocock's installed `code-review` skill**, reviewing the changes **since the baseline** on two axes: **Standards** (documented repository standards) and **Spec** (the originating issue). The review skill's own parallel subagents examine those axes and report them side by side. One high-effort agent addresses actionable findings.
 
 **Only after review remediation** does the orchestrator run builds, checks, and tests in increasing scope. If something fails, a high-effort debugging agent fixes root causes and the orchestrator reruns checks. On success, the **orchestrator itself invokes the installed `git-commit` skill** to create a Conventional Commit. No separate commit agent; no automatic push or PR.
 
@@ -20,18 +20,24 @@ flowchart TD
     A -- No --> STOP[Stop · No changes]
     A -- Yes --> B[Main Orchestrator · Execution]
     B --> L[Resolve runtime models and effort at creation<br/>Report actual settings and fallbacks]
-    L --> C[Code Agent]
-    L --> T[Test Agent · Write only]
+    L --> SH{Footprint over budget?}
+    SH -- Yes --> B0[B0 · Interface skeleton, frozen contract]
+    B0 --> C[Code Shards · waves of at most 6 agents]
+    B0 --> T[Test Shards · Write only]
+    SH -- No --> C1[Code Agent]
+    SH -- No --> T1[Test Agent · Write only]
     L --> D[Documentation Agent]
-    C --> J[Wait for all three & integrate]
+    C --> J[Wait for all agents & integrate]
     T --> J
+    C1 --> J
+    T1 --> J
     D --> J
     J --> R[Review Agent · Matt Pocock code-review skill]
     R --> S[Standards Review]
     R --> X[Spec Review]
     S --> M[Consolidated Findings]
     X --> M
-    M --> F[Resolve latest Sonnet / Sol · High effort<br/>One Review-Fix Agent]
+    M --> F[Resolve latest Sonnet / Sol · High effort<br/>Review-Fix Agent<br/>one per finding group if large]
     F --> V[Orchestrator · Deferred Tests & Checks]
     V --> G{All required checks pass?}
     G -- No --> H[Resolve latest Sonnet / Sol · High effort<br/>One Test-Fix Agent]
@@ -43,7 +49,7 @@ flowchart TD
     I --> Z[Conventional Commit + Final Report]
 ```
 
-> The implementation agents run concurrently; later phases are sequential. The Standards and Spec branches are launched by the **code-review skill itself**, not by extra implementation agents.
+> The implementation agents run concurrently (up to 6 at once); later phases are sequential. The Standards and Spec branches are launched by the **code-review skill itself**, not by extra implementation agents.
 
 ## Model selection and complexity
 
@@ -68,7 +74,7 @@ These are logical preferences, not model identifiers. The skill pins no model ve
 - **Standard:** Multiple related changes, moderate complexity, or meaningful regression risk.
 - **Complex:** Architectural changes, concurrency, advanced DSP, numerical algorithms, realtime processing, or significant cross-module interactions.
 
-Default to **Standard** when uncertain. Complexity affects model configuration and effort only: every issue still uses exactly three parallel implementation agents.
+Default to **Standard** when uncertain. Complexity affects model configuration, effort and the permitted shard count; every issue still has the three implementation roles. Shard limits: Simple 1/1/1 (Code/Tests/Docs), Standard up to 3 Code and 3 Tests, Complex up to 6 Code and 6 Tests; Docs stays at 1 unless its own estimate exceeds the budget. Use the fewest shards that fit the ~200k per-agent budget.
 
 | Complexity | Code | Tests | Documentation |
 | --- | --- | --- | --- |
@@ -114,7 +120,7 @@ Alternatively, select the skill in the host UI and pass a GitHub issue URL. It i
 ## Required dependencies
 
 - A GitHub issue-reading mechanism (for example a connected GitHub tool or authenticated `gh`).
-- A subagent runtime supporting three concurrent implementation agents and clean contexts.
+- A subagent runtime supporting clean contexts and concurrent implementation agents (up to 6 for sharded issues; a lower runtime limit is used and disclosed).
 - **Matt Pocock's `code-review` skill** installed and invocable; must support Standards and Spec parallel reviews.
 - A **`git-commit` skill** installed and invocable by the orchestrator for Conventional Commits.
 - Runtime model/effort controls where available. Preferences are latest available Sonnet/Sol at High effort for remediation; supported fallbacks or defaults are disclosed when explicit selection is unavailable.
@@ -125,6 +131,7 @@ The installed review and commit skills remain required. Model fallbacks are perm
 
 - The orchestrator keeps a short Implementation Brief and reuses verified planning findings to avoid repeated broad exploration.
 - Agent context is specific to each role; agents inspect other files only when necessary.
+- Large issues are sharded so each implementation agent stays within about 200k tokens; Tests shards share one harness brief extracted during planning.
 - Agent handoffs are concise (typically 200–400 words), with file paths and decisions rather than pasted diffs.
 - Reviews target the baseline changes and inspect nearby dependencies only as needed.
 - Tests are staged **after** review fixes: fast checks, focused tests, broader suites.

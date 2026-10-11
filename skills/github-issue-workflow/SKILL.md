@@ -1,6 +1,6 @@
 ---
 name: github-issue-workflow
-description: Implement any GitHub issue using an approved Plan Mode plan, three parallel implementation subagents (code, tests, docs), Matt Pocock's code-review skill reviewing changes since a fixed Git baseline on Standards and Spec axes, high-effort remediation, deferred tests, and a final Conventional Commit via git-commit. Use when asked to implement a GitHub issue URL with a planned agent workflow.
+description: Implement any GitHub issue using an approved Plan Mode plan, three parallel implementation roles (code, tests, docs) that split into budgeted shards for large issues, Matt Pocock's code-review skill reviewing changes since a fixed Git baseline on Standards and Spec axes, high-effort remediation, deferred tests, and a final Conventional Commit via git-commit. Use when asked to implement a GitHub issue URL with a planned agent workflow.
 argument-hint: <github-issue-url>
 license: MIT
 metadata:
@@ -16,7 +16,7 @@ Implement the GitHub issue supplied in `$ARGUMENTS` (or the GitHub issue URL in 
 
 - **Start in Plan Mode.** Perform read-only analysis and present the plan using the host's normal approval flow. Do not modify repository files, launch implementation agents, or run build/test/lint in Plan Mode. Record the baseline Git SHA in the plan; recheck it at execution start before edits.
 - **After approval**, act as a lightweight **main orchestrator**, delegating code, tests, documentation, review and fixes. Execute verification and `git-commit` in the orchestrator itself.
-- **Strict mode:** launch **exactly three** implementation subagents concurrently: **Code**, **Tests**, **Documentation**. Each starts with a clean, focused context. Do not substitute serial work or spawn extra implementation agents. If concurrent agents are unavailable, report the blocker instead of claiming concurrency.
+- **Strict mode:** run **exactly three implementation roles** concurrently: **Code**, **Tests**, **Documentation**. Each role is one agent by default and splits into shards only when the plan's footprint estimate exceeds about 200k tokens per agent (see [agent-contracts.md](references/agent-contracts.md#sharding-and-work-units)). Each agent starts with a clean, focused context. Run at most 6 implementation agents concurrently, queueing extra shards in waves. Do not substitute serial work for concurrent roles or add shards beyond the plan. If concurrent agents are unavailable, report the blocker instead of claiming concurrency.
 - **Never run any build, test suite, lint, or static-analysis command** before implementation, independent review, and review remediation have completed. Agents may inspect tests and source without executing checks.
 - Push or open a PR only when explicitly requested; do not amend unrelated commits. Do not commit if required validation fails or blockers remain. Preserve unrelated user changes.
 - Follow the repository's own contribution instructions. If an external skill or configured model is unavailable, report that limitation; do not misrepresent a generic replacement as the required skill/model.
@@ -28,16 +28,18 @@ Read [agent-contracts.md](references/agent-contracts.md) during Plan Mode for co
 1. Verify the issue URL and repository; read issue description, comments, and acceptance criteria.
 2. Inspect targeted architecture, repository standards (`AGENTS.md`, `CLAUDE.md`, contributing docs as applicable), existing code/tests, and tooling. Avoid broad scans once scope is clear.
 3. Identify the current fixed Git baseline SHA. Inspect working-tree status and note pre-existing staged, unstaged, and untracked changes. Keep these separate from issue changes; do not assume `git diff <baseline>` is exclusively your work.
-4. Classify the issue as **Simple**, **Standard**, or **Complex** using [agent-contracts.md](references/agent-contracts.md); default to Standard when uncertain. Produce a compact **Implementation Brief**: issue reference, acceptance criteria, likely files/contracts, coding rules, responsibilities and file ownership, baseline SHA, pre-existing changes, complexity and rationale, detected runtime, preferred model family/effort for each implementation and remediation role, review delegation, resolution/fallback policy, review strategy, and test commands to execute later. Model selection requires no separate user approval.
+4. Classify the issue as **Simple**, **Standard**, or **Complex** using [agent-contracts.md](references/agent-contracts.md); default to Standard when uncertain. Produce a compact **Implementation Brief**: issue reference, acceptance criteria, likely files/contracts, coding rules, responsibilities and file ownership, a work-unit table (units, owned files, criteria covered, dependencies, footprint estimate, shard counts per role, waves) and test harness brief when sharding, baseline SHA, pre-existing changes, complexity and rationale, detected runtime, preferred model family/effort for each implementation and remediation role, review delegation, resolution/fallback policy, review strategy, and test commands to execute later. Model selection requires no separate user approval.
 5. Present the plan for approval. Do not start execution until the host exits Plan Mode and execution is authorized.
 
-## Phase B — Three parallel implementation agents
+## Phase B — Three parallel implementation roles
 
-Spawn Code, Tests, Documentation **concurrently**, with clean contexts and role-specific portions of the Implementation Brief. Minimize shared file ownership. All agents edit their designated files, but **do not run checks**. The Test Agent derives expected behavior from the issue (not solely from implementation). Documentation Agent documents the intended interface and reconciles with the final implementation. Agents may read additional code as needed.
+If the plan shards Code or Tests, first run **B0**, the interface skeleton (stubs, signatures, types, file layout; no behavior), and treat it as the frozen contract.
 
-At every implementation or remediation agent creation, detect the runtime and resolve the latest available preferred model family and supported reasoning effort using [agent-contracts.md](references/agent-contracts.md). Configure them explicitly where supported; report any fallback and actual settings without inventing identifiers or parameters. Keep exactly three parallel implementation agents regardless of the selected profile. Code and Tests prefer the latest available Sonnet/Sol; Documentation prefers Haiku/Luna (Claude Code/Codex respectively). Implementation effort follows complexity; remediation always requests High. Matt Pocock's `code-review` skill retains control of review model selection.
+Spawn Code, Tests, Documentation **concurrently**, with clean contexts and role-specific portions of the Implementation Brief. Sharded roles launch one agent per work unit, paired Code/Tests shards, at most 6 agents at once, with later waves started as dependencies complete. Minimize shared file ownership. All agents edit their designated files, but **do not run checks**. Test agents derive expected behavior from the issue and the contract (not from implementation). Documentation Agent documents the intended interface and reconciles with the final implementation. Agents read only owned files, direct dependencies and the contract unless more is clearly needed. An agent nearing its budget stops cleanly and returns a remaining-work handoff; start a fresh continuation agent from it.
 
-Wait for all three. Inspect concise summaries and the working tree; integrate changes without overwriting agent or pre-existing work. If implementation is incomplete, use the existing role owner to finish before review, rather than creating duplicate agents.
+At every implementation or remediation agent creation, detect the runtime and resolve the latest available preferred model family and supported reasoning effort using [agent-contracts.md](references/agent-contracts.md). Configure them explicitly where supported; report any fallback and actual settings without inventing identifiers or parameters. Keep exactly three implementation roles regardless of the selected profile; shard counts follow the plan. Code and Tests prefer the latest available Sonnet/Sol; Documentation prefers Haiku/Luna (Claude Code/Codex respectively). Implementation effort follows complexity; remediation always requests High. Matt Pocock's `code-review` skill retains control of review model selection.
+
+Wait for all agents and waves. Inspect concise summaries and the working tree; check ownership overlaps and contract drift; integrate changes without overwriting agent or pre-existing work. If implementation is incomplete, use the existing role or shard owner (or a spill continuation) to finish before review, rather than creating duplicate agents.
 
 ## Phase C — Matt Pocock code review
 
@@ -47,7 +49,7 @@ Require the **actual installed `code-review` skill**, with its own prescribed pa
 
 ## Phase D — Review remediation
 
-Spawn **one clean-context remediation agent** to verify and fix all valid findings; update tests/docs when needed. Request the **latest available Sonnet** in Claude Code or **latest available Sol** in Codex, always at **High effort**. Apply the shared resolution and disclosed-fallback policy in [agent-contracts.md](references/agent-contracts.md); use supported defaults when explicit configuration is unavailable. Report fixed and dismissed findings with rationale. No checks in this phase.
+Spawn **one clean-context remediation agent** (or one per disjoint group of findings when the queue is large, within the concurrency cap) to verify and fix all valid findings; update tests/docs when needed. Request the **latest available Sonnet** in Claude Code or **latest available Sol** in Codex, always at **High effort**. Apply the shared resolution and disclosed-fallback policy in [agent-contracts.md](references/agent-contracts.md); use supported defaults when explicit configuration is unavailable. Report fixed and dismissed findings with rationale. No checks in this phase.
 
 ## Phase E — Deferred verification
 
@@ -65,6 +67,7 @@ Finish with a concise summary of requested and actual agent model/effort setting
 
 1. Keep main-session context to plan, short agent handoffs, consolidated findings, check summaries, and commit result. Avoid full file dumps, raw diffs, and noisy logs.
 2. Route **role-specific** context, not the same broad repository dump, to each agent. Agents can inspect additional files independently.
+   Keep each implementation agent within about 200k tokens by sharding per the work-unit plan, and share one test harness brief across Tests shards instead of letting each rediscover conventions.
 3. Reuse verified findings from the plan and handoffs; avoid repeated broad repository exploration unless findings are outdated or incomplete.
 4. Limit normal agent completion reports to approximately **200–400 words**, with changed files, decisions, risks, and status. Do not paste diffs or entire code files.
 5. Keep review tied to the fixed baseline while inspecting enough surrounding context for correctness. Do not add an automatic second full review unless material changes justify it.
@@ -74,4 +77,4 @@ Finish with a concise summary of requested and actual agent model/effort setting
 
 ## Required order
 
-**Plan Mode → approval → 3 concurrent agents (Code + Tests + Docs) → consolidate → Matt Pocock `code-review` (Standards ∥ Spec) → one review-fix agent → staged tests/checks → conditional test-fix agent and revalidation → orchestrator invokes `git-commit` → final report.**
+**Plan Mode → approval → B0 interface skeleton (only if sharding) → Code + Tests + Docs roles, sharded in waves of at most 6 agents → consolidate → Matt Pocock `code-review` (Standards ∥ Spec) → one review-fix agent → staged tests/checks → conditional test-fix agent and revalidation → orchestrator invokes `git-commit` → final report.**
