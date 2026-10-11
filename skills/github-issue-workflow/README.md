@@ -14,12 +14,15 @@ When all three finish, a review agent invokes **Matt Pocock's installed `code-re
 
 ```mermaid
 flowchart TD
-    P[Main Orchestrator · Plan Mode<br/>Read issue, inspect repo, record baseline<br/>Classify complexity & select agent models/effort] --> A{Plan approved?}
+    P[Main Orchestrator · Plan Mode<br/>Read issue, inspect repo, record baseline<br/>Prepare Implementation Brief] --> PC[Plan Mode · Classify Simple / Standard / Complex]
+    PC --> PM[Plan Mode · Select model families and effort<br/>Record runtime and resolution policy]
+    PM --> A{Plan approved?}
     A -- No --> STOP[Stop · No changes]
     A -- Yes --> B[Main Orchestrator · Execution]
-    B --> C[Code Agent]
-    B --> T[Test Agent · Write only]
-    B --> D[Documentation Agent]
+    B --> L[Resolve runtime models and effort at creation<br/>Report actual settings and fallbacks]
+    L --> C[Code Agent]
+    L --> T[Test Agent · Write only]
+    L --> D[Documentation Agent]
     C --> J[Wait for all three & integrate]
     T --> J
     D --> J
@@ -28,10 +31,10 @@ flowchart TD
     R --> X[Spec Review]
     S --> M[Consolidated Findings]
     X --> M
-    M --> F[One High-Effort Review-Fix Agent]
+    M --> F[Resolve latest Sonnet / Sol · High effort<br/>One Review-Fix Agent]
     F --> V[Orchestrator · Deferred Tests & Checks]
     V --> G{All required checks pass?}
-    G -- No --> H[One High-Effort Test-Fix Agent]
+    G -- No --> H[Resolve latest Sonnet / Sol · High effort<br/>One Test-Fix Agent]
     H --> V
     G -- Yes --> K[Orchestrator · Final Diff & Acceptance Check]
     K --> Q{Commit gate clear?}
@@ -42,19 +45,30 @@ flowchart TD
 
 > The implementation agents run concurrently; later phases are sequential. The Standards and Spec branches are launched by the **code-review skill itself**, not by extra implementation agents.
 
-## Implementation model selection
+## Model selection and complexity
 
-During Plan Mode, the orchestrator classifies the issue and records its rationale and each implementation agent's requested model and reasoning effort in the plan. Model selection requires no separate user approval.
+During Plan Mode, record complexity and rationale, the detected runtime, preferred model families and requested reasoning efforts for implementation and remediation, review delegation, and the dynamic resolution/fallback policy in the Implementation Brief. Resolve actual settings at agent creation; model configuration needs no separate approval gate.
 
-Default model assignments:
+### Model-family assignments
 
 | Agent | Claude Code | Codex |
 | --- | --- | --- |
-| Code | Sonnet 5.5 | GPT-6.1 Sol |
-| Tests | Sonnet 5.5 | GPT-6.1 Sol |
-| Documentation | Haiku 5.5 | GPT-6 Luna |
+| Code | Latest available Sonnet | Latest available Sol |
+| Tests | Latest available Sonnet | Latest available Sol |
+| Documentation | Latest available Haiku | Latest available Luna |
+| Code Review | Managed by code-review skill | Managed by code-review skill |
+| Review Remediation | Latest available Sonnet | Latest available Sol |
+| Test Remediation | Latest available Sonnet | Latest available Sol |
 
-The three complexity profiles select default effort for both hosts, where supported:
+These are logical preferences, not model identifiers. The skill pins no model versions. Matt Pocock's `code-review` skill controls its internal selection; the review wrapper uses runtime defaults.
+
+### Complexity and effort
+
+- **Simple:** Localized modifications, straightforward logic, minimal dependencies.
+- **Standard:** Multiple related changes, moderate complexity, or meaningful regression risk.
+- **Complex:** Architectural changes, concurrency, advanced DSP, numerical algorithms, realtime processing, or significant cross-module interactions.
+
+Default to **Standard** when uncertain. Complexity affects model configuration and effort only: every issue still uses exactly three parallel implementation agents.
 
 | Complexity | Code | Tests | Documentation |
 | --- | --- | --- | --- |
@@ -62,17 +76,15 @@ The three complexity profiles select default effort for both hosts, where suppor
 | Standard | High | Medium | Low |
 | Complex | High | High | Medium |
 
-- **Simple:** Localized changes, straightforward behavior, limited dependencies.
-- **Standard:** Multiple related changes, moderate logic, or meaningful regression risk.
-- **Complex:** Architectural changes, concurrency, advanced DSP, numerical algorithms, realtime constraints, or substantial cross-module interactions.
+Both remediation roles always request **High effort**. Correctness, acceptance criteria, and required coverage remain mandatory for every profile.
 
-Uncertain complexity defaults to **Standard**. Resolve model and effort independently per role: **explicit per-role settings in the invoking request → explicit per-role host settings → documented defaults**. No new configuration file is needed.
+### Dynamic resolution and fallbacks
 
-Before launching exactly three concurrent agents, the orchestrator checks runtime capabilities and explicitly configures supported model and effort settings. Display names are mapped only to verified runtime identifiers. If a requested model or effort is unavailable, use the closest suitable supported alternative that maintains quality for the role and complexity, preferring comparable models and a supported effort at least as high as requested when available. If effort cannot be configured, use the runtime default and disclose it. Report requested and actual settings, fallback reasons, and any unverified settings; never claim an unavailable configuration was used.
+At every implementation or remediation agent creation, detect Claude Code or Codex and inspect its supported model configuration, catalog, and effort controls. Prefer native version-independent aliases only when the runtime documents that they select the newest compatible member of the preferred family. Otherwise, select the newest compatible catalog entry using available release/version evidence. Never assume an unversioned alias means latest, invent identifiers or parameters, or add lookup scripts, dependencies, or configuration files. Runtime information takes priority over unnecessary web searches.
 
-These overrides and fallbacks apply only to implementation agents. **Review and test-failure remediation retain Sonnet 5.5 / GPT-6.1 Sol at High effort**, including the existing requirement to report unavailable settings and request appropriate configuration. Matt Pocock's `code-review` skill retains control of its internal model selection. Detailed launch instructions live in [agent-contracts.md](references/agent-contracts.md).
+If the preferred family is unavailable, use a suitable supported fallback and report the actual model and reason. If latest status cannot be verified, disclose that uncertainty. Apply effort only where supported; prefer a supported level at least as high as requested when available, otherwise use the supported default. If explicit model/effort configuration is unsupported, proceed with runtime defaults and report the limitation. Mark actual settings unknown when the runtime does not expose them. Never silently substitute or claim unsupported settings were applied.
 
-Cheaper documentation models and complexity-adjusted effort reduce token consumption while keeping stronger models for code and tests. Complex issues receive more reasoning effort; acceptance criteria, test coverage, review findings, and implementation quality remain mandatory for every profile.
+Record requested and actual settings, resolution evidence, and limitations in launch summaries and the final report. Explicit user configuration takes precedence. New agents retain fresh isolated contexts using supported runtime controls; reusing a debugging agent retains its existing configuration. Detailed operational instructions live in [agent-contracts.md](references/agent-contracts.md).
 
 ## Install
 
@@ -105,19 +117,21 @@ Alternatively, select the skill in the host UI and pass a GitHub issue URL. It i
 - A subagent runtime supporting three concurrent implementation agents and clean contexts.
 - **Matt Pocock's `code-review` skill** installed and invocable; must support Standards and Spec parallel reviews.
 - A **`git-commit` skill** installed and invocable by the orchestrator for Conventional Commits.
-- Appropriate host model/effort configuration for remediation: **Claude Code Sonnet 5.5 High** or **Codex GPT 6.1 Sol High**. If not selectable, the workflow reports this instead of pretending the requested model was used.
+- Runtime model/effort controls where available. Preferences are latest available Sonnet/Sol at High effort for remediation; supported fallbacks or defaults are disclosed when explicit selection is unavailable.
 
-The workflow intentionally does **not** silently substitute a generic review, commit implementation, or model for required dependencies.
+The installed review and commit skills remain required. Model fallbacks are permitted under the documented resolution policy and are always disclosed.
 
 ## Token-efficiency design
 
-- The orchestrator keeps a short Implementation Brief rather than entire repository dumps.
+- The orchestrator keeps a short Implementation Brief and reuses verified planning findings to avoid repeated broad exploration.
 - Agent context is specific to each role; agents inspect other files only when necessary.
 - Agent handoffs are concise (typically 200–400 words), with file paths and decisions rather than pasted diffs.
 - Reviews target the baseline changes and inspect nearby dependencies only as needed.
 - Tests are staged **after** review fixes: fast checks, focused tests, broader suites.
 - Verbose test logs are stored in temporary files instead of repeatedly pasted into conversations.
 - Related debugging cycles can reuse the existing fix agent.
+- Documentation uses the lighter preferred family; implementation effort follows complexity while remediation always requests High.
+- Avoid redundant agents, reviews, and test executions; rerun when changes or failures justify it.
 - Commit runs in the orchestrator, removing the overhead of another subagent.
 
 Token efficiency must never replace required review, correctness, acceptance criteria, or validation.
