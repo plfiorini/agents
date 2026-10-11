@@ -2,6 +2,10 @@
 name: github-issue-workflow
 description: Implement any GitHub issue using an approved Plan Mode plan, three parallel implementation subagents (code, tests, docs), Matt Pocock's code-review skill reviewing changes since a fixed Git baseline on Standards and Spec axes, high-effort remediation, deferred tests, and a final Conventional Commit via git-commit. Use when asked to implement a GitHub issue URL with a planned agent workflow.
 argument-hint: <github-issue-url>
+license: MIT
+metadata:
+  author: Pier Luigi Fiorini
+  copyright: Copyright (c) 2026 Pier Luigi Fiorini
 ---
 
 # GitHub Issue Workflow
