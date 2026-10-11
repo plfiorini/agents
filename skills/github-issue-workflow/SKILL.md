@@ -21,19 +21,21 @@ Implement the GitHub issue supplied in `$ARGUMENTS` (or the GitHub issue URL in 
 - Do not push, open a PR, or amend unrelated commits. Do not commit if required validation fails or blockers remain. Preserve unrelated user changes.
 - Follow the repository's own contribution instructions. If an external skill or configured model is unavailable, report that limitation; do not misrepresent a generic replacement as the required skill/model.
 
-Read [agent-contracts.md](references/agent-contracts.md) when preparing subagent handoffs, and [validation.md](references/validation.md) before review, verification, and commit. Load only the reference needed for the current phase.
+Read [agent-contracts.md](references/agent-contracts.md) during Plan Mode for complexity classification and implementation model selection, and when preparing subagent handoffs. Read [validation.md](references/validation.md) before review, verification, and commit. Load only the reference needed for the current phase.
 
 ## Phase A — Plan Mode (read-only)
 
 1. Verify the issue URL and repository; read issue description, comments, and acceptance criteria.
 2. Inspect targeted architecture, repository standards (`AGENTS.md`, `CLAUDE.md`, contributing docs as applicable), existing code/tests, and tooling. Avoid broad scans once scope is clear.
 3. Identify the current fixed Git baseline SHA. Inspect working-tree status and note pre-existing staged, unstaged, and untracked changes. Keep these separate from issue changes; do not assume `git diff <baseline>` is exclusively your work.
-4. Produce a compact **Implementation Brief**: issue reference, acceptance criteria, likely files/contracts, coding rules, responsibilities and file ownership, baseline SHA, pre-existing changes, review strategy, and test commands to execute later.
+4. Classify the issue as **Simple**, **Standard**, or **Complex** using [agent-contracts.md](references/agent-contracts.md); default to Standard when uncertain. Produce a compact **Implementation Brief**: issue reference, acceptance criteria, likely files/contracts, coding rules, responsibilities and file ownership, baseline SHA, pre-existing changes, complexity and rationale, requested model/effort for each implementation agent, review strategy, and test commands to execute later. Model selection requires no separate user approval.
 5. Present the plan for approval. Do not start execution until the host exits Plan Mode and execution is authorized.
 
 ## Phase B — Three parallel implementation agents
 
 Spawn Code, Tests, Documentation **concurrently**, with clean contexts and role-specific portions of the Implementation Brief. Minimize shared file ownership. All agents edit their designated files, but **do not run checks**. The Test Agent derives expected behavior from the issue (not solely from implementation). Documentation Agent documents the intended interface and reconciles with the final implementation. Agents may read additional code as needed.
+
+Before launch, resolve each agent's model and reasoning effort against runtime capabilities using [agent-contracts.md](references/agent-contracts.md). Configure them explicitly where supported; report any fallback and actual settings without inventing identifiers or parameters. Keep exactly three parallel implementation agents regardless of the selected profile. These settings do not override Matt Pocock's internal `code-review` model selection or the remediation settings below.
 
 Wait for all three. Inspect concise summaries and the working tree; integrate changes without overwriting agent or pre-existing work. If implementation is incomplete, use the existing role owner to finish before review, rather than creating duplicate agents.
 
@@ -67,7 +69,7 @@ Finish with a concise summary of implementation, modified files, Standards/Spec 
 4. Limit normal agent completion reports to approximately **200–400 words**, with changed files, decisions, risks, and status. Do not paste diffs or entire code files.
 5. Keep review tied to the fixed baseline while inspecting enough surrounding context for correctness. Do not add an automatic second full review unless material changes justify it.
 6. Validate progressively **after** review remediation; use focused failures and temporary log files instead of duplicating huge outputs.
-7. Reuse one debugging agent when efficient. Assign lower-cost models to straightforward implementation roles where configurable, but never silently override the specified high-effort remediation requirement.
+7. Reuse one debugging agent when efficient. Use the configured role models and complexity-based effort profiles in [agent-contracts.md](references/agent-contracts.md) for implementation; preserve the specified high-effort remediation requirement.
 8. Call `git-commit` directly in the orchestrator. Never trade away acceptance criteria, required review, or checks just to save tokens.
 
 ## Required order

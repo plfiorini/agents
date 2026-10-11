@@ -14,7 +14,7 @@ When all three finish, a review agent invokes **Matt Pocock's installed `code-re
 
 ```mermaid
 flowchart TD
-    P[Main Orchestrator · Plan Mode<br/>Read issue, inspect repo, record baseline] --> A{Plan approved?}
+    P[Main Orchestrator · Plan Mode<br/>Read issue, inspect repo, record baseline<br/>Classify complexity & select agent models/effort] --> A{Plan approved?}
     A -- No --> STOP[Stop · No changes]
     A -- Yes --> B[Main Orchestrator · Execution]
     B --> C[Code Agent]
@@ -41,6 +41,38 @@ flowchart TD
 ```
 
 > The implementation agents run concurrently; later phases are sequential. The Standards and Spec branches are launched by the **code-review skill itself**, not by extra implementation agents.
+
+## Implementation model selection
+
+During Plan Mode, the orchestrator classifies the issue and records its rationale and each implementation agent's requested model and reasoning effort in the plan. Model selection requires no separate user approval.
+
+Default model assignments:
+
+| Agent | Claude Code | Codex |
+| --- | --- | --- |
+| Code | Sonnet 5.5 | GPT-6.1 Sol |
+| Tests | Sonnet 5.5 | GPT-6.1 Sol |
+| Documentation | Haiku 5.5 | GPT-6 Luna |
+
+The three complexity profiles select default effort for both hosts, where supported:
+
+| Complexity | Code | Tests | Documentation |
+| --- | --- | --- | --- |
+| Simple | Medium | Medium | Low |
+| Standard | High | Medium | Low |
+| Complex | High | High | Medium |
+
+- **Simple:** Localized changes, straightforward behavior, limited dependencies.
+- **Standard:** Multiple related changes, moderate logic, or meaningful regression risk.
+- **Complex:** Architectural changes, concurrency, advanced DSP, numerical algorithms, realtime constraints, or substantial cross-module interactions.
+
+Uncertain complexity defaults to **Standard**. Resolve model and effort independently per role: **explicit per-role settings in the invoking request → explicit per-role host settings → documented defaults**. No new configuration file is needed.
+
+Before launching exactly three concurrent agents, the orchestrator checks runtime capabilities and explicitly configures supported model and effort settings. Display names are mapped only to verified runtime identifiers. If a requested model or effort is unavailable, use the closest suitable supported alternative that maintains quality for the role and complexity, preferring comparable models and a supported effort at least as high as requested when available. If effort cannot be configured, use the runtime default and disclose it. Report requested and actual settings, fallback reasons, and any unverified settings; never claim an unavailable configuration was used.
+
+These overrides and fallbacks apply only to implementation agents. **Review and test-failure remediation retain Sonnet 5.5 / GPT-6.1 Sol at High effort**, including the existing requirement to report unavailable settings and request appropriate configuration. Matt Pocock's `code-review` skill retains control of its internal model selection. Detailed launch instructions live in [agent-contracts.md](references/agent-contracts.md).
+
+Cheaper documentation models and complexity-adjusted effort reduce token consumption while keeping stronger models for code and tests. Complex issues receive more reasoning effort; acceptance criteria, test coverage, review findings, and implementation quality remain mandatory for every profile.
 
 ## Install
 
